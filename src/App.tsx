@@ -13,6 +13,7 @@ import { LoadingModal, ConfirmModal } from './components/Modal';
 import { AITryOnModal, TryOnOptions } from './components/AITryOnModal';
 import { UpscaleModal, UpscaleOptions } from './components/UpscaleModal';
 import { ShortcutsModal } from './components/ShortcutsModal';
+import { MobileToolbar } from './components/MobileToolbar';
 
 // Hooks
 import { useToast } from './hooks/useToast';
@@ -859,6 +860,50 @@ const App: React.FC = () => {
         confirmText="Yes, start new"
         cancelText="Cancel"
         danger
+      />
+
+      {/* Mobile Toolbar */}
+      <MobileToolbar
+        activeTool={activeTool}
+        onToolChange={setActiveTool}
+        brushSettings={brushSettings}
+        onBrushSettingsChange={(settings) => setBrushSettings((prev) => ({ ...prev, ...settings }))}
+        canUndo={canUndo}
+        canRedo={canRedo}
+        onUndo={() => undo(layers, setLayers)}
+        onRedo={() => redo(layers, setLayers)}
+        layers={layers}
+        selectedLayerId={selectedLayerId}
+        onSelectLayer={setSelectedLayerId}
+        onToggleVisibility={toggleLayerVisibility}
+        onDeleteLayer={deleteLayer}
+        onAddLayer={() => {
+          const input = document.createElement('input');
+          input.type = 'file';
+          input.accept = 'image/*';
+          input.onchange = (e) => {
+            const file = (e.target as HTMLInputElement).files?.[0];
+            if (file) handleAddLayer(file);
+          };
+          input.click();
+        }}
+        onAutoAlign={handleAutoAlign}
+        onAITryOn={() => setShowTryOnModal(true)}
+        onAIUpscale={() => setShowUpscaleModal(true)}
+        onExport={handleExport}
+        onSaveProject={handleSaveProject}
+        onLoadProject={handleLoadProject}
+        onNewProject={() => {
+          const input = document.createElement('input');
+          input.type = 'file';
+          input.accept = 'image/*';
+          input.onchange = (e) => {
+            const file = (e.target as HTMLInputElement).files?.[0];
+            if (file) handleNewProject(file);
+          };
+          input.click();
+        }}
+        isProcessing={isProcessing}
       />
 
       {/* Toast notifications */}

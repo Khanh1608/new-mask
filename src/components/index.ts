@@ -7,3 +7,4 @@ export * from './LayerList';
 export * from './AITryOnModal';
 export * from './UpscaleModal';
 export * from './ShortcutsModal';
+export * from './MobileToolbar';
