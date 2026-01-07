@@ -284,6 +284,40 @@ export function createFaceMask(
 }
 
 /**
+ * Create inverted face mask (face area is transparent, body is visible)
+ * Used for face swap: hide overlay's face to reveal base's face underneath
+ */
+export function createInvertedFaceMask(
+  width: number,
+  height: number,
+  face: FaceDetectionResult,
+  foreheadRatio = 0.3,
+  expand = 1.2
+): HTMLCanvasElement {
+  // First create normal face mask
+  const faceMask = createFaceMask(width, height, face, foreheadRatio, expand);
+
+  // Create inverted mask
+  const canvas = document.createElement('canvas');
+  canvas.width = width;
+  canvas.height = height;
+
+  const ctx = canvas.getContext('2d');
+  if (!ctx) return canvas;
+
+  // Fill with white (fully visible)
+  ctx.fillStyle = 'white';
+  ctx.fillRect(0, 0, width, height);
+
+  // Cut out the face area (make it transparent/black)
+  ctx.globalCompositeOperation = 'destination-out';
+  ctx.drawImage(faceMask, 0, 0);
+  ctx.globalCompositeOperation = 'source-over';
+
+  return canvas;
+}
+
+/**
  * Check if face-api is available
  */
 export function isFaceApiAvailable(): boolean {

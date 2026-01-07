@@ -35,7 +35,7 @@ import {
   loadFaceModels,
   detectSingleFace,
   calculateFaceAlignment,
-  createFaceMask,
+  createInvertedFaceMask,
   isFaceApiAvailable,
 } from './utils/face';
 
@@ -456,7 +456,8 @@ const App: React.FC = () => {
 
       setProcessingMessage('Calculating alignment...');
       const alignment = calculateFaceAlignment(baseFace, overlayFace, overlayLayer.image.width, overlayLayer.image.height);
-      const faceMask = createFaceMask(overlayLayer.image.width, overlayLayer.image.height, overlayFace, 0.3);
+      // Use inverted mask: hide overlay's face to reveal base's face underneath
+      const faceMask = createInvertedFaceMask(overlayLayer.image.width, overlayLayer.image.height, overlayFace, 0.3, 1.15);
 
       updateLayer(overlayLayer.id, {
         x: alignment.x,
