@@ -6,7 +6,7 @@ import React, { useEffect, useCallback } from 'react';
 import { XIcon } from './Icons';
 import type { ModalProps } from '@/types';
 
-export const Modal: React.FC<ModalProps> = ({ isOpen, onClose, title, children }) => {
+export const Modal: React.FC<ModalProps> = ({ isOpen, onClose, title, children, maxWidth = 'max-w-lg' }) => {
   const handleEscape = useCallback(
     (e: KeyboardEvent) => {
       if (e.key === 'Escape') {
@@ -33,7 +33,7 @@ export const Modal: React.FC<ModalProps> = ({ isOpen, onClose, title, children }
   return (
     <div className="modal-overlay" onClick={onClose}>
       <div
-        className="modal-content"
+        className={`modal-content ${maxWidth}`}
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header */}

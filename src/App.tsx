@@ -14,6 +14,7 @@ import { AITryOnModal, TryOnOptions } from './components/AITryOnModal';
 import { UpscaleModal, UpscaleOptions } from './components/UpscaleModal';
 import { ShortcutsModal } from './components/ShortcutsModal';
 import { MobileToolbar } from './components/MobileToolbar';
+import { ImageCompareModal } from './components/ImageCompareModal';
 
 // Hooks
 import { useToast } from './hooks/useToast';
@@ -86,6 +87,8 @@ const App: React.FC = () => {
   const [showShortcutsModal, setShowShortcutsModal] = useState(false);
   const [showConfirmNew, setShowConfirmNew] = useState(false);
   const [pendingNewProjectFile, setPendingNewProjectFile] = useState<File | null>(null);
+  const [showCompareModal, setShowCompareModal] = useState(false);
+  const [compareImages, setCompareImages] = useState<{ before: string; after: string } | null>(null);
 
   // State - Processing
   const [isProcessing, setIsProcessing] = useState(false);
@@ -582,11 +585,13 @@ const App: React.FC = () => {
         imageToUpscale = canvasToBase64(composite);
       }
 
+      // Save before image for comparison
+      const beforeImage = imageToUpscale;
+
       const response = await replicateUpscale({
         image: imageToUpscale,
         scale: options.scale,
         enhanceFace: options.enhanceFace,
-        creativity: options.creativity,
       });
 
       if (!response.success || !response.resultImage) {
@@ -617,6 +622,13 @@ const App: React.FC = () => {
 
       setLayers(prev => [...prev, newLayer]);
       setSelectedLayerId(newLayer.id);
+
+      // Show comparison modal
+      setCompareImages({
+        before: beforeImage,
+        after: response.resultImage,
+      });
+      setShowCompareModal(true);
 
       const timeStr = response.processingTime
         ? ` (${(response.processingTime / 1000).toFixed(1)}s)`
@@ -845,6 +857,20 @@ const App: React.FC = () => {
         isOpen={showShortcutsModal}
         onClose={() => setShowShortcutsModal(false)}
       />
+
+      {compareImages && (
+        <ImageCompareModal
+          isOpen={showCompareModal}
+          onClose={() => {
+            setShowCompareModal(false);
+            setCompareImages(null);
+          }}
+          beforeImage={compareImages.before}
+          afterImage={compareImages.after}
+          beforeLabel="Gốc"
+          afterLabel="Đã Upscale"
+        />
+      )}
 
       <ConfirmModal
         isOpen={showConfirmNew}

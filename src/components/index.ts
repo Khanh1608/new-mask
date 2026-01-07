@@ -8,3 +8,4 @@ export * from './AITryOnModal';
 export * from './UpscaleModal';
 export * from './ShortcutsModal';
 export * from './MobileToolbar';
+export * from './ImageCompareModal';
