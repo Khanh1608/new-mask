@@ -16,6 +16,15 @@ import { ShortcutsModal } from './components/ShortcutsModal';
 import { MobileToolbar } from './components/MobileToolbar';
 import { ImageCompareModal } from './components/ImageCompareModal';
 import { APISettingsModal } from './components/APISettingsModal';
+import { CloudSettingsModal } from './components/CloudSettingsModal';
+
+// Cloud Storage
+import {
+  handleDropboxCallback,
+  uploadToDropbox,
+  getAutoUploadSettings,
+  isDropboxConnected,
+} from './api/dropbox';
 
 // Hooks
 import { useToast } from './hooks/useToast';
@@ -97,6 +106,7 @@ const App: React.FC = () => {
   const [showCompareModal, setShowCompareModal] = useState(false);
   const [compareImages, setCompareImages] = useState<{ before: string; after: string } | null>(null);
   const [showSettingsModal, setShowSettingsModal] = useState(false);
+  const [showCloudModal, setShowCloudModal] = useState(false);
 
   // State - Processing
   const [isProcessing, setIsProcessing] = useState(false);
@@ -120,6 +130,24 @@ const App: React.FC = () => {
     // Also try to init from env variables
     initReplicate();
   }, []);
+
+  // Handle Dropbox OAuth callback
+  useEffect(() => {
+    const urlParams = new URLSearchParams(window.location.search);
+    const code = urlParams.get('code');
+    if (code) {
+      // Remove code from URL
+      window.history.replaceState({}, document.title, window.location.pathname);
+      // Exchange code for token
+      handleDropboxCallback(code)
+        .then(() => {
+          showToast({ type: 'success', message: 'Dropbox connected successfully!' });
+        })
+        .catch((err) => {
+          showToast({ type: 'error', message: err.message || 'Failed to connect Dropbox' });
+        });
+    }
+  }, [showToast]);
 
   // Store previous layer count to detect when new layer is added
   const prevLayerCountRef = React.useRef(0);
@@ -791,10 +819,26 @@ const App: React.FC = () => {
       });
       setShowCompareModal(true);
 
-      const timeStr = response.processingTime
-        ? ` (${(response.processingTime / 1000).toFixed(1)}s)`
-        : '';
-      showToast({ type: 'success', message: `Upscaled to ${options.scale}x successfully${timeStr}` });
+      // Auto upload to Dropbox if enabled
+      const autoUploadSettings = getAutoUploadSettings();
+      if (autoUploadSettings.enabled && autoUploadSettings.uploadUpscale && isDropboxConnected()) {
+        setProcessingMessage('Uploading to Dropbox...');
+        const filename = `upscaled-${options.scale}x-${Date.now()}.png`;
+        const uploadResult = await uploadToDropbox(response.resultImage, filename, autoUploadSettings.folder);
+        if (uploadResult.success) {
+          showToast({ type: 'success', message: `Upscaled & uploaded to ${uploadResult.path}` });
+        } else {
+          const timeStr = response.processingTime
+            ? ` (${(response.processingTime / 1000).toFixed(1)}s)`
+            : '';
+          showToast({ type: 'success', message: `Upscaled${timeStr} (Dropbox upload failed)` });
+        }
+      } else {
+        const timeStr = response.processingTime
+          ? ` (${(response.processingTime / 1000).toFixed(1)}s)`
+          : '';
+        showToast({ type: 'success', message: `Upscaled to ${options.scale}x successfully${timeStr}` });
+      }
     } catch (error) {
       console.error('Upscale error:', error);
       showToast({ type: 'error', message: 'Upscale failed' });
@@ -888,8 +932,23 @@ const App: React.FC = () => {
         canvasSize.height
       );
 
-      await downloadCanvas(composite, `layermask-export-${Date.now()}.png`);
-      showToast({ type: 'success', message: 'Image exported' });
+      const filename = `layermask-export-${Date.now()}.png`;
+      await downloadCanvas(composite, filename);
+
+      // Auto upload to Dropbox if enabled
+      const autoUploadSettings = getAutoUploadSettings();
+      if (autoUploadSettings.enabled && autoUploadSettings.uploadExport && isDropboxConnected()) {
+        setProcessingMessage('Uploading to Dropbox...');
+        const imageData = canvasToBase64(composite);
+        const uploadResult = await uploadToDropbox(imageData, filename, autoUploadSettings.folder);
+        if (uploadResult.success) {
+          showToast({ type: 'success', message: `Exported & uploaded to ${uploadResult.path}` });
+        } else {
+          showToast({ type: 'success', message: 'Exported (Dropbox upload failed)' });
+        }
+      } else {
+        showToast({ type: 'success', message: 'Image exported' });
+      }
     } catch {
       showToast({ type: 'error', message: 'Export failed' });
     } finally {
@@ -956,6 +1015,7 @@ const App: React.FC = () => {
           onExport={handleExport}
           onShowShortcuts={() => setShowShortcutsModal(true)}
           onShowSettings={() => setShowSettingsModal(true)}
+          onShowCloud={() => setShowCloudModal(true)}
         />
       </div>
 
@@ -1027,6 +1087,11 @@ const App: React.FC = () => {
       <APISettingsModal
         isOpen={showSettingsModal}
         onClose={() => setShowSettingsModal(false)}
+      />
+
+      <CloudSettingsModal
+        isOpen={showCloudModal}
+        onClose={() => setShowCloudModal(false)}
       />
 
       {compareImages && (
@@ -1106,6 +1171,7 @@ const App: React.FC = () => {
         }}
         isProcessing={isProcessing}
         onShowSettings={() => setShowSettingsModal(true)}
+        onShowCloud={() => setShowCloudModal(true)}
       />
 
       {/* Toast notifications */}

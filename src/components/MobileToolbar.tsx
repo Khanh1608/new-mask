@@ -21,6 +21,7 @@ import {
   TrashIcon,
   ChevronDownIcon,
   SettingsIcon,
+  CloudIcon,
 } from './Icons';
 
 interface MobileToolbarProps {
@@ -47,6 +48,7 @@ interface MobileToolbarProps {
   onNewProject: () => void;
   isProcessing: boolean;
   onShowSettings: () => void;
+  onShowCloud: () => void;
 }
 
 export const MobileToolbar: React.FC<MobileToolbarProps> = ({
@@ -73,6 +75,7 @@ export const MobileToolbar: React.FC<MobileToolbarProps> = ({
   onNewProject,
   isProcessing,
   onShowSettings,
+  onShowCloud,
 }) => {
   const [showLayers, setShowLayers] = useState(false);
   const [showMenu, setShowMenu] = useState(false);
@@ -239,6 +242,13 @@ export const MobileToolbar: React.FC<MobileToolbarProps> = ({
               >
                 <SettingsIcon size={24} className="text-gray-400" />
                 <span className="text-xs text-dark-300">API Keys</span>
+              </button>
+              <button
+                onClick={() => { onShowCloud(); setShowMenu(false); }}
+                className="flex flex-col items-center gap-2 p-4 rounded-xl bg-dark-700/50 hover:bg-dark-600/50"
+              >
+                <CloudIcon size={24} className="text-blue-400" />
+                <span className="text-xs text-dark-300">Cloud</span>
               </button>
             </div>
           </div>

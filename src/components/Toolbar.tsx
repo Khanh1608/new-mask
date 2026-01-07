@@ -27,6 +27,7 @@ import {
   KeyboardIcon,
   EyeIcon,
   SettingsIcon,
+  CloudIcon,
 } from './Icons';
 import type { ToolType, BrushSettings, BrushMode } from '@/types';
 
@@ -63,6 +64,7 @@ interface ToolbarProps {
   onExport: () => void;
   onShowShortcuts: () => void;
   onShowSettings: () => void;
+  onShowCloud: () => void;
 }
 
 export const Toolbar: React.FC<ToolbarProps> = ({
@@ -98,6 +100,7 @@ export const Toolbar: React.FC<ToolbarProps> = ({
   onExport,
   onShowShortcuts,
   onShowSettings,
+  onShowCloud,
 }) => {
   const baseInputRef = useRef<HTMLInputElement>(null);
   const layerInputRef = useRef<HTMLInputElement>(null);
@@ -352,6 +355,10 @@ export const Toolbar: React.FC<ToolbarProps> = ({
         <button className="w-full btn-ghost text-xs text-dark-400" onClick={onShowSettings}>
           <SettingsIcon size={14} />
           API Settings
+        </button>
+        <button className="w-full btn-ghost text-xs text-dark-400" onClick={onShowCloud}>
+          <CloudIcon size={14} />
+          Cloud Storage
         </button>
         <button className="w-full btn-ghost text-xs text-dark-400" onClick={onShowShortcuts}>
           <KeyboardIcon size={14} />
