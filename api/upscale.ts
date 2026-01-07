@@ -6,6 +6,7 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 
 const REPLICATE_API_URL = 'https://api.replicate.com/v1/predictions';
+// Crystal Upscaler (Clarity Upscaler) by philz1337x
 const CRYSTAL_UPSCALER_VERSION = 'dfad41707589d68ecdccd1dfa600d55a208f9310748e44bfe35b4a6291453d5e';
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
@@ -52,7 +53,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     // Resemblance: 1.0 = giữ nguyên gốc nhất, khi enhanceFace = true thì set cao nhất
     const resemblanceValue = enhanceFace ? 1.0 : 0.8;
 
-    // Start prediction
+    // Start prediction - only essential parameters
     const createResponse = await fetch(REPLICATE_API_URL, {
       method: 'POST',
       headers: {
@@ -66,10 +67,6 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
           scale_factor: scale,
           resemblance: resemblanceValue,
           creativity: creativityValue,
-          hdr: 0,
-          prompt: 'masterpiece, best quality, high resolution, detailed, sharp',
-          negative_prompt: 'blurry, low quality, pixelated, noise, artifacts, distorted face',
-          num_inference_steps: 20,
         },
       }),
     });
