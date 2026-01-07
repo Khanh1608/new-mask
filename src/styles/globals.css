@@ -1,0 +1,269 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* ==================== BASE STYLES ==================== */
+@layer base {
+  * {
+    @apply border-dark-700;
+  }
+
+  body {
+    @apply bg-dark-900 text-dark-100 antialiased;
+  }
+
+  /* Custom selection */
+  ::selection {
+    @apply bg-primary-500/30 text-white;
+  }
+}
+
+/* ==================== COMPONENTS ==================== */
+@layer components {
+  /* Glass morphism panels */
+  .glass-panel {
+    @apply bg-dark-800/60 backdrop-blur-xl border border-dark-700/50 rounded-2xl shadow-glass;
+  }
+
+  .glass-panel-sm {
+    @apply bg-dark-800/40 backdrop-blur-lg border border-dark-700/30 rounded-xl shadow-glass-sm;
+  }
+
+  /* Buttons */
+  .btn {
+    @apply inline-flex items-center justify-center gap-2 px-4 py-2
+           font-medium rounded-xl transition-all duration-200
+           focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-dark-900;
+  }
+
+  .btn-primary {
+    @apply btn bg-gradient-to-r from-primary-500 to-primary-600
+           text-white hover:from-primary-600 hover:to-primary-700
+           focus:ring-primary-500 shadow-neon hover:shadow-neon-lg;
+  }
+
+  .btn-secondary {
+    @apply btn bg-dark-700/50 text-dark-200 border border-dark-600
+           hover:bg-dark-600/50 hover:text-white focus:ring-dark-500;
+  }
+
+  .btn-ghost {
+    @apply btn bg-transparent text-dark-300
+           hover:bg-dark-700/50 hover:text-white focus:ring-dark-500;
+  }
+
+  .btn-icon {
+    @apply p-2.5 rounded-xl transition-all duration-200
+           text-dark-400 hover:text-white hover:bg-dark-700/50
+           focus:outline-none focus:ring-2 focus:ring-primary-500/50;
+  }
+
+  .btn-icon-active {
+    @apply btn-icon bg-primary-500/20 text-primary-400 ring-1 ring-primary-500/50;
+  }
+
+  /* Inputs */
+  .input {
+    @apply w-full px-4 py-2.5 bg-dark-800/50 border border-dark-600
+           rounded-xl text-white placeholder-dark-400
+           focus:outline-none focus:ring-2 focus:ring-primary-500/50 focus:border-primary-500
+           transition-all duration-200;
+  }
+
+  .input-label {
+    @apply block text-sm font-medium text-dark-300 mb-1.5;
+  }
+
+  /* Sliders */
+  .slider {
+    @apply w-full h-2 bg-dark-700 rounded-full appearance-none cursor-pointer
+           [&::-webkit-slider-thumb]:appearance-none
+           [&::-webkit-slider-thumb]:w-4
+           [&::-webkit-slider-thumb]:h-4
+           [&::-webkit-slider-thumb]:rounded-full
+           [&::-webkit-slider-thumb]:bg-primary-500
+           [&::-webkit-slider-thumb]:shadow-neon
+           [&::-webkit-slider-thumb]:cursor-pointer
+           [&::-webkit-slider-thumb]:transition-transform
+           [&::-webkit-slider-thumb]:duration-200
+           [&::-webkit-slider-thumb]:hover:scale-110;
+  }
+
+  /* Tool buttons */
+  .tool-btn {
+    @apply relative p-3 rounded-xl transition-all duration-200
+           text-dark-400 hover:text-white hover:bg-dark-700/50
+           focus:outline-none focus:ring-2 focus:ring-primary-500/30;
+  }
+
+  .tool-btn-active {
+    @apply tool-btn bg-gradient-to-br from-primary-500/20 to-primary-600/10
+           text-primary-400 ring-1 ring-primary-500/50;
+  }
+
+  /* Layer items */
+  .layer-item {
+    @apply flex items-center gap-3 p-3 rounded-xl
+           bg-dark-800/30 border border-transparent
+           transition-all duration-200 cursor-pointer
+           hover:bg-dark-700/50;
+  }
+
+  .layer-item-selected {
+    @apply layer-item bg-primary-500/10 border-primary-500/30
+           ring-1 ring-primary-500/30;
+  }
+
+  /* Dropdown */
+  .dropdown {
+    @apply absolute z-50 mt-2 min-w-[200px] py-2
+           glass-panel animate-scale-in origin-top-right;
+  }
+
+  .dropdown-item {
+    @apply flex items-center gap-3 px-4 py-2.5 text-sm text-dark-200
+           hover:bg-dark-700/50 hover:text-white transition-colors cursor-pointer;
+  }
+
+  /* Modal */
+  .modal-overlay {
+    @apply fixed inset-0 z-50 bg-black/60 backdrop-blur-sm
+           flex items-center justify-center p-4
+           animate-fade-in;
+  }
+
+  .modal-content {
+    @apply glass-panel p-6 max-w-lg w-full max-h-[90vh] overflow-y-auto
+           animate-scale-in;
+  }
+
+  /* Tooltip */
+  .tooltip {
+    @apply absolute z-50 px-3 py-1.5 text-xs font-medium
+           bg-dark-800 text-white rounded-lg shadow-lg
+           pointer-events-none animate-fade-in;
+  }
+
+  /* Tabs */
+  .tab-list {
+    @apply flex gap-1 p-1 bg-dark-800/50 rounded-xl;
+  }
+
+  .tab {
+    @apply flex-1 px-4 py-2 text-sm font-medium rounded-lg
+           text-dark-400 transition-all duration-200
+           hover:text-white hover:bg-dark-700/50;
+  }
+
+  .tab-active {
+    @apply tab bg-primary-500/20 text-primary-400 shadow-sm;
+  }
+
+  /* Progress */
+  .progress-bar {
+    @apply h-2 bg-dark-700 rounded-full overflow-hidden;
+  }
+
+  .progress-fill {
+    @apply h-full bg-gradient-to-r from-primary-500 to-primary-400
+           rounded-full transition-all duration-300;
+  }
+
+  /* Badge */
+  .badge {
+    @apply inline-flex items-center px-2.5 py-0.5 text-xs font-medium
+           rounded-full bg-primary-500/20 text-primary-400;
+  }
+
+  .badge-success {
+    @apply badge bg-green-500/20 text-green-400;
+  }
+
+  .badge-warning {
+    @apply badge bg-yellow-500/20 text-yellow-400;
+  }
+
+  .badge-error {
+    @apply badge bg-red-500/20 text-red-400;
+  }
+}
+
+/* ==================== UTILITIES ==================== */
+@layer utilities {
+  /* Gradient text */
+  .gradient-text {
+    @apply bg-gradient-to-r from-primary-400 to-purple-400 bg-clip-text text-transparent;
+  }
+
+  /* Glow effects */
+  .glow {
+    @apply shadow-neon;
+  }
+
+  .glow-lg {
+    @apply shadow-neon-lg;
+  }
+
+  /* Hide scrollbar */
+  .scrollbar-hide {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+
+  .scrollbar-hide::-webkit-scrollbar {
+    display: none;
+  }
+
+  /* Drag handle */
+  .drag-handle {
+    @apply cursor-grab active:cursor-grabbing;
+  }
+
+  /* Shimmer effect */
+  .shimmer {
+    @apply bg-gradient-to-r from-transparent via-white/10 to-transparent
+           bg-[length:200%_100%] animate-shimmer;
+  }
+
+  /* Aspect ratios */
+  .aspect-canvas {
+    aspect-ratio: 4/3;
+  }
+}
+
+/* ==================== ANIMATIONS ==================== */
+@keyframes float {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-10px); }
+}
+
+.animate-float {
+  animation: float 3s ease-in-out infinite;
+}
+
+/* ==================== RESPONSIVE UTILITIES ==================== */
+@media (max-width: 768px) {
+  .mobile-full {
+    @apply w-full h-full;
+  }
+}
+
+/* ==================== CANVAS SPECIFIC ==================== */
+.canvas-container {
+  @apply relative w-full h-full overflow-hidden bg-dark-950;
+  background-image:
+    linear-gradient(45deg, #1e293b 25%, transparent 25%),
+    linear-gradient(-45deg, #1e293b 25%, transparent 25%),
+    linear-gradient(45deg, transparent 75%, #1e293b 75%),
+    linear-gradient(-45deg, transparent 75%, #1e293b 75%);
+  background-size: 20px 20px;
+  background-position: 0 0, 0 10px, 10px -10px, -10px 0px;
+}
+
+/* Brush cursor */
+.brush-cursor {
+  @apply pointer-events-none fixed rounded-full
+         border-2 border-white/80 shadow-lg
+         transition-[width,height] duration-75;
+  transform: translate(-50%, -50%);
+}
