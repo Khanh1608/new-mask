@@ -151,11 +151,11 @@ Requirements:
         Authorization: `Bearer ${config.apiKey}`,
       },
       body: JSON.stringify({
-        model: 'dall-e-3',
+        model: 'gpt-image-1.5',
         prompt: generationPrompt,
         n: 1,
         size: '1024x1024',
-        quality: request.enhanceQuality ? 'hd' : 'standard',
+        quality: request.enhanceQuality ? 'high' : 'auto',
         response_format: 'b64_json',
       }),
     });
@@ -251,11 +251,11 @@ Create a detailed DALL-E prompt to achieve this edit while maintaining the origi
         Authorization: `Bearer ${config.apiKey}`,
       },
       body: JSON.stringify({
-        model: 'dall-e-3',
+        model: 'gpt-image-1.5',
         prompt: editPrompt,
         n: 1,
         size: '1024x1024',
-        quality: 'hd',
+        quality: 'high',
         response_format: 'b64_json',
       }),
     });
