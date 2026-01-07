@@ -17,6 +17,7 @@ export interface UpscaleOptions {
   scale: 2 | 4 | 8 | 10;
   enhanceFace: boolean;
   mode: 'layer' | 'composite';
+  creativity: number;
 }
 
 export const UpscaleModal: React.FC<UpscaleModalProps> = ({
@@ -28,9 +29,10 @@ export const UpscaleModal: React.FC<UpscaleModalProps> = ({
   const [scale, setScale] = useState<2 | 4 | 8 | 10>(4);
   const [enhanceFace, setEnhanceFace] = useState(true);
   const [mode, setMode] = useState<'layer' | 'composite'>('composite');
+  const [creativity, setCreativity] = useState(0);
 
   const handleSubmit = () => {
-    onSubmit({ scale, enhanceFace, mode });
+    onSubmit({ scale, enhanceFace, mode, creativity });
     onClose();
   };
 
@@ -97,6 +99,29 @@ export const UpscaleModal: React.FC<UpscaleModalProps> = ({
           </div>
         </div>
 
+        {/* Creativity Slider */}
+        <div>
+          <div className="flex justify-between items-center mb-2">
+            <label className="input-label mb-0">Creativity</label>
+            <span className="text-xs text-primary-400 font-medium">{creativity}%</span>
+          </div>
+          <input
+            type="range"
+            min="0"
+            max="100"
+            value={creativity}
+            onChange={(e) => setCreativity(Number(e.target.value))}
+            className="w-full accent-primary-500"
+          />
+          <div className="flex justify-between text-xs text-dark-500 mt-1">
+            <span>Giữ nguyên gốc</span>
+            <span>Sáng tạo</span>
+          </div>
+          <p className="text-xs text-dark-400 mt-2">
+            0% = giữ nguyên chi tiết gốc (khuyên dùng cho ảnh chân dung)
+          </p>
+        </div>
+
         {/* Options */}
         <label className="flex items-center gap-3 cursor-pointer group">
           <div
@@ -108,14 +133,14 @@ export const UpscaleModal: React.FC<UpscaleModalProps> = ({
             {enhanceFace && <CheckIcon size={12} />}
           </div>
           <span className="text-sm text-dark-300 group-hover:text-white transition-colors">
-            Enhance faces (better facial detail)
+            Enhance faces (độ giống mặt cao nhất)
           </span>
         </label>
 
         {/* Info */}
         <div className="p-3 rounded-xl bg-dark-800/50 border border-dark-700">
           <p className="text-xs text-dark-400">
-            <span className="text-primary-400 font-medium">Note:</span> Upscaling uses Crystal Upscaler via Replicate API. Processing may take 30-120 seconds.
+            <span className="text-primary-400 font-medium">Tip:</span> Để giữ mặt giống nhất, đặt Creativity = 0% và bật Enhance faces.
           </p>
         </div>
 

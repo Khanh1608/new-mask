@@ -30,7 +30,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   }
 
   try {
-    const { image, scale, enhanceFace } = req.body || {};
+    const { image, scale, enhanceFace, creativity = 0 } = req.body || {};
 
     // Validate body exists
     if (!req.body) {
@@ -47,6 +47,11 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       return res.status(413).json({ success: false, error: 'Image too large. Max 10MB.' });
     }
 
+    // Convert creativity from 0-100 to 0-1
+    const creativityValue = Math.max(0, Math.min(1, creativity / 100));
+    // Resemblance: 1.0 = giữ nguyên gốc nhất, khi enhanceFace = true thì set cao nhất
+    const resemblanceValue = enhanceFace ? 1.0 : 0.8;
+
     // Start prediction
     const createResponse = await fetch(REPLICATE_API_URL, {
       method: 'POST',
@@ -59,12 +64,12 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         input: {
           image: image,
           scale_factor: scale,
-          resemblance: enhanceFace ? 0.8 : 0.6,
-          creativity: 0.3,
-          hdr: 0.1,
-          prompt: 'masterpiece, best quality, high resolution, detailed',
-          negative_prompt: 'blurry, low quality, pixelated, noise',
-          num_inference_steps: 18,
+          resemblance: resemblanceValue,
+          creativity: creativityValue,
+          hdr: 0,
+          prompt: 'masterpiece, best quality, high resolution, detailed, sharp',
+          negative_prompt: 'blurry, low quality, pixelated, noise, artifacts, distorted face',
+          num_inference_steps: 20,
         },
       }),
     });

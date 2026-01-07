@@ -77,6 +77,7 @@ export interface UpscaleRequest {
   image: string;               // Base64
   scale: 2 | 4 | 8 | 10;
   enhanceFace?: boolean;
+  creativity?: number;         // 0-100, default 0
 }
 
 export interface UpscaleResponse {

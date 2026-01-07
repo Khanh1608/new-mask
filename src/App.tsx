@@ -583,6 +583,7 @@ const App: React.FC = () => {
         image: imageToUpscale,
         scale: options.scale,
         enhanceFace: options.enhanceFace,
+        creativity: options.creativity,
       });
 
       if (!response.success || !response.resultImage) {

@@ -108,6 +108,7 @@ export async function replicateUpscale(request: UpscaleRequest): Promise<Upscale
         image: compressedImage,
         scale: request.scale,
         enhanceFace: request.enhanceFace ?? true,
+        creativity: request.creativity ?? 0,
       }),
     });
 
