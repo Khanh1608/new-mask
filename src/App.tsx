@@ -44,7 +44,7 @@ import { initGemini, geminiTryOn, isGeminiConfigured } from './api/gemini';
 import { initOpenAI, openaiTryOn, isOpenAIConfigured } from './api/openai';
 
 // Types
-import type { Layer, LayerType, ToolType, BrushSettings, BrushMode, ViewTransform } from './types';
+import type { Layer, ToolType, BrushSettings, ViewTransform } from './types';
 
 const App: React.FC = () => {
   // Canvas refs

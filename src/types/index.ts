@@ -1,34 +1,13 @@
-// ==================== ENUMS ====================
-export enum LayerType {
-  BASE = 'BASE',
-  OVERLAY = 'OVERLAY',
-  AI_GENERATED = 'AI_GENERATED',
-}
+// ==================== TYPES ====================
+export type LayerType = 'BASE' | 'OVERLAY' | 'AI_GENERATED';
 
-export enum ToolType {
-  SELECT = 'SELECT',
-  TRANSFORM = 'TRANSFORM',
-  BRUSH = 'BRUSH',
-  ERASER = 'ERASER',
-  HAND = 'HAND',
-  ZOOM = 'ZOOM',
-}
+export type ToolType = 'SELECT' | 'TRANSFORM' | 'BRUSH' | 'ERASER' | 'HAND' | 'ZOOM';
 
-export enum BrushMode {
-  ERASE = 'ERASE',
-  RESTORE = 'RESTORE',
-}
+export type BrushMode = 'ERASE' | 'RESTORE';
 
-export enum AIProvider {
-  GEMINI = 'GEMINI',
-  OPENAI = 'OPENAI',
-}
+export type AIProvider = 'GEMINI' | 'OPENAI';
 
-export enum TryOnMode {
-  VIRTUAL_TRYON = 'VIRTUAL_TRYON',      // Upload clothing image
-  AI_GENERATE = 'AI_GENERATE',           // AI generates clothing
-  SEGMENT_REPLACE = 'SEGMENT_REPLACE',   // Segment and replace
-}
+export type TryOnMode = 'VIRTUAL_TRYON' | 'AI_GENERATE' | 'SEGMENT_REPLACE';
 
 // ==================== INTERFACES ====================
 export interface Layer {
