@@ -20,6 +20,7 @@ import {
   EyeOffIcon,
   TrashIcon,
   ChevronDownIcon,
+  SettingsIcon,
 } from './Icons';
 
 interface MobileToolbarProps {
@@ -45,6 +46,7 @@ interface MobileToolbarProps {
   onLoadProject: () => void;
   onNewProject: () => void;
   isProcessing: boolean;
+  onShowSettings: () => void;
 }
 
 export const MobileToolbar: React.FC<MobileToolbarProps> = ({
@@ -70,6 +72,7 @@ export const MobileToolbar: React.FC<MobileToolbarProps> = ({
   onLoadProject,
   onNewProject,
   isProcessing,
+  onShowSettings,
 }) => {
   const [showLayers, setShowLayers] = useState(false);
   const [showMenu, setShowMenu] = useState(false);
@@ -229,6 +232,13 @@ export const MobileToolbar: React.FC<MobileToolbarProps> = ({
               >
                 <SparklesIcon size={24} className="text-yellow-400" />
                 <span className="text-xs text-dark-300">Upscale</span>
+              </button>
+              <button
+                onClick={() => { onShowSettings(); setShowMenu(false); }}
+                className="flex flex-col items-center gap-2 p-4 rounded-xl bg-dark-700/50 hover:bg-dark-600/50"
+              >
+                <SettingsIcon size={24} className="text-gray-400" />
+                <span className="text-xs text-dark-300">API Keys</span>
               </button>
             </div>
           </div>

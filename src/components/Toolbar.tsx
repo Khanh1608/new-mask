@@ -26,6 +26,7 @@ import {
   ScaleIcon,
   KeyboardIcon,
   EyeIcon,
+  SettingsIcon,
 } from './Icons';
 import type { ToolType, BrushSettings, BrushMode } from '@/types';
 
@@ -61,6 +62,7 @@ interface ToolbarProps {
   onLoadProject: () => void;
   onExport: () => void;
   onShowShortcuts: () => void;
+  onShowSettings: () => void;
 }
 
 export const Toolbar: React.FC<ToolbarProps> = ({
@@ -95,6 +97,7 @@ export const Toolbar: React.FC<ToolbarProps> = ({
   onLoadProject,
   onExport,
   onShowShortcuts,
+  onShowSettings,
 }) => {
   const baseInputRef = useRef<HTMLInputElement>(null);
   const layerInputRef = useRef<HTMLInputElement>(null);
@@ -345,7 +348,11 @@ export const Toolbar: React.FC<ToolbarProps> = ({
       </div>
 
       {/* Footer */}
-      <div className="px-4 py-3 border-t border-dark-700/50">
+      <div className="px-4 py-3 border-t border-dark-700/50 space-y-2">
+        <button className="w-full btn-ghost text-xs text-dark-400" onClick={onShowSettings}>
+          <SettingsIcon size={14} />
+          API Settings
+        </button>
         <button className="w-full btn-ghost text-xs text-dark-400" onClick={onShowShortcuts}>
           <KeyboardIcon size={14} />
           Keyboard Shortcuts

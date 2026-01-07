@@ -15,6 +15,7 @@ import { UpscaleModal, UpscaleOptions } from './components/UpscaleModal';
 import { ShortcutsModal } from './components/ShortcutsModal';
 import { MobileToolbar } from './components/MobileToolbar';
 import { ImageCompareModal } from './components/ImageCompareModal';
+import { APISettingsModal } from './components/APISettingsModal';
 
 // Hooks
 import { useToast } from './hooks/useToast';
@@ -95,6 +96,7 @@ const App: React.FC = () => {
   const [pendingNewProjectFile, setPendingNewProjectFile] = useState<File | null>(null);
   const [showCompareModal, setShowCompareModal] = useState(false);
   const [compareImages, setCompareImages] = useState<{ before: string; after: string } | null>(null);
+  const [showSettingsModal, setShowSettingsModal] = useState(false);
 
   // State - Processing
   const [isProcessing, setIsProcessing] = useState(false);
@@ -953,6 +955,7 @@ const App: React.FC = () => {
           onLoadProject={handleLoadProject}
           onExport={handleExport}
           onShowShortcuts={() => setShowShortcutsModal(true)}
+          onShowSettings={() => setShowSettingsModal(true)}
         />
       </div>
 
@@ -1019,6 +1022,11 @@ const App: React.FC = () => {
       <ShortcutsModal
         isOpen={showShortcutsModal}
         onClose={() => setShowShortcutsModal(false)}
+      />
+
+      <APISettingsModal
+        isOpen={showSettingsModal}
+        onClose={() => setShowSettingsModal(false)}
       />
 
       {compareImages && (
@@ -1097,6 +1105,7 @@ const App: React.FC = () => {
           input.click();
         }}
         isProcessing={isProcessing}
+        onShowSettings={() => setShowSettingsModal(true)}
       />
 
       {/* Toast notifications */}
