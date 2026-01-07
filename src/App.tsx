@@ -1019,57 +1019,77 @@ const App: React.FC = () => {
 
     try {
       setIsProcessing(true);
-      setProcessingMessage('Uploading to Dropbox...');
+      const settings = getAutoUploadSettings();
+      const timestamp = Date.now();
+      const uploadResults: string[] = [];
+      let uploadFailed = false;
 
-      // Calculate bounds for all visible layers
-      const visibleLayers = layers.filter(l => l.visible && l.image);
-      let maxWidth = canvasSize.width;
-      let maxHeight = canvasSize.height;
+      // Find different layer types
+      const baseLayer = layers.find(l => l.type === 'BASE' && l.image);
+      const upscaleLayer = layers.find(l => l.type === 'AI_GENERATED' && l.image);
+      const overlayLayers = layers.filter(l => l.type === 'OVERLAY' && l.image);
 
-      for (const layer of visibleLayers) {
-        if (layer.image) {
-          const layerWidth = layer.x + (layer.width || layer.image.width) * layer.scale;
-          const layerHeight = layer.y + (layer.height || layer.image.height) * layer.scale;
-          maxWidth = Math.max(maxWidth, layerWidth, layer.image.width * layer.scale);
-          maxHeight = Math.max(maxHeight, layerHeight, layer.image.height * layer.scale);
+      // Logic: If upscale exists -> upload base + upscale
+      //        If no upscale -> upload base + overlays
+      const hasUpscale = !!upscaleLayer;
+
+      // 1. Upload base image
+      if (baseLayer?.image) {
+        setProcessingMessage('Uploading base image...');
+        const imageData = canvasToBase64(baseLayer.image);
+        const filename = `base-${timestamp}.png`;
+        const result = await uploadToDropbox(imageData, filename, settings.folder);
+        if (result.success) {
+          uploadResults.push('base');
+        } else {
+          uploadFailed = true;
         }
       }
 
-      const exportWidth = Math.ceil(maxWidth);
-      const exportHeight = Math.ceil(maxHeight);
+      // 2. If has upscale -> upload upscale, else upload overlays
+      if (hasUpscale && upscaleLayer?.image) {
+        setProcessingMessage('Uploading upscaled image...');
+        const imageData = canvasToBase64(upscaleLayer.image);
+        const filename = `upscaled-${timestamp}.png`;
+        const result = await uploadToDropbox(imageData, filename, settings.folder);
+        if (result.success) {
+          uploadResults.push('upscaled');
+        } else {
+          uploadFailed = true;
+        }
+      } else if (!hasUpscale && overlayLayers.length > 0) {
+        // Upload all overlay layers
+        for (let i = 0; i < overlayLayers.length; i++) {
+          const layer = overlayLayers[i];
+          if (layer.image) {
+            setProcessingMessage(`Uploading overlay ${i + 1}/${overlayLayers.length}...`);
+            const imageData = canvasToBase64(layer.image);
+            const filename = `overlay-${i + 1}-${timestamp}.png`;
+            const result = await uploadToDropbox(imageData, filename, settings.folder);
+            if (result.success) {
+              uploadResults.push(`overlay-${i + 1}`);
+            } else {
+              uploadFailed = true;
+            }
+          }
+        }
+      }
 
-      const composite = composeLayers(
-        layers.map((l) => ({
-          image: l.image,
-          mask: l.mask,
-          x: l.x,
-          y: l.y,
-          scale: l.scale,
-          rotation: l.rotation,
-          opacity: l.opacity,
-          visible: l.visible,
-          blendMode: l.blendMode,
-        })),
-        exportWidth,
-        exportHeight
-      );
-
-      const imageData = canvasToBase64(composite);
-      const settings = getAutoUploadSettings();
-      const filename = `layermask-${Date.now()}.png`;
-      const uploadResult = await uploadToDropbox(imageData, filename, settings.folder);
-
-      if (uploadResult.success) {
-        showToast({ type: 'success', message: `Uploaded to ${uploadResult.path}` });
+      // Show result
+      if (uploadResults.length > 0) {
+        const msg = uploadFailed
+          ? `Uploaded ${uploadResults.length} images (some failed)`
+          : `Uploaded ${uploadResults.length} images: ${uploadResults.join(', ')}`;
+        showToast({ type: uploadFailed ? 'warning' : 'success', message: msg });
       } else {
-        showToast({ type: 'error', message: uploadResult.error || 'Upload failed' });
+        showToast({ type: 'error', message: 'No images uploaded' });
       }
     } catch {
       showToast({ type: 'error', message: 'Upload failed' });
     } finally {
       setIsProcessing(false);
     }
-  }, [layers, canvasSize, showToast]);
+  }, [layers, showToast]);
 
   // Keyboard shortcuts
   useKeyboard({
