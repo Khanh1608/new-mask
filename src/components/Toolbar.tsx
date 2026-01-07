@@ -376,6 +376,9 @@ export const Toolbar: React.FC<ToolbarProps> = ({
           <KeyboardIcon size={14} />
           Keyboard Shortcuts
         </button>
+        <div className="text-center text-[10px] text-dark-500 pt-2 border-t border-dark-700/30">
+          ver by KhanhCS
+        </div>
       </div>
     </div>
   );
