@@ -62,6 +62,8 @@ interface ToolbarProps {
   onSaveProject: () => void;
   onLoadProject: () => void;
   onExport: () => void;
+  onUploadToCloud: () => void;
+  isCloudConnected: boolean;
   onShowShortcuts: () => void;
   onShowSettings: () => void;
   onShowCloud: () => void;
@@ -98,6 +100,8 @@ export const Toolbar: React.FC<ToolbarProps> = ({
   onSaveProject,
   onLoadProject,
   onExport,
+  onUploadToCloud,
+  isCloudConnected,
   onShowShortcuts,
   onShowSettings,
   onShowCloud,
@@ -161,6 +165,14 @@ export const Toolbar: React.FC<ToolbarProps> = ({
           <button className="btn-primary w-full text-sm mt-2" onClick={onExport}>
             <DownloadIcon size={16} />
             Export PNG
+          </button>
+          <button
+            className={`w-full text-sm mt-2 ${isCloudConnected ? 'btn-secondary' : 'btn-ghost text-dark-500'}`}
+            onClick={isCloudConnected ? onUploadToCloud : onShowCloud}
+            title={isCloudConnected ? 'Upload to Dropbox' : 'Connect Dropbox first'}
+          >
+            <CloudIcon size={16} />
+            {isCloudConnected ? 'Upload to Dropbox' : 'Connect Dropbox'}
           </button>
         </Section>
 
