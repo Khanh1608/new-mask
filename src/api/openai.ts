@@ -156,7 +156,7 @@ Requirements:
         n: 1,
         size: '1024x1024',
         quality: request.enhanceQuality ? 'high' : 'auto',
-        response_format: 'b64_json',
+        output_format: 'png',
       }),
     });
 
@@ -256,7 +256,7 @@ Create a detailed DALL-E prompt to achieve this edit while maintaining the origi
         n: 1,
         size: '1024x1024',
         quality: 'high',
-        response_format: 'b64_json',
+        output_format: 'png',
       }),
     });
 
