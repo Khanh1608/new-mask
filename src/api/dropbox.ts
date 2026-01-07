@@ -184,6 +184,8 @@ export async function uploadToDropbox(
 
     const path = `${folder}/${filename}`;
 
+    console.log('Uploading to Dropbox:', { path, blobSize: blob.size });
+
     const response = await fetch(DROPBOX_UPLOAD_URL, {
       method: 'POST',
       headers: {
@@ -199,8 +201,18 @@ export async function uploadToDropbox(
       body: blob,
     });
 
+    console.log('Dropbox response status:', response.status);
+
     if (!response.ok) {
-      const error = await response.json();
+      const errorText = await response.text();
+      console.error('Dropbox upload error:', response.status, errorText);
+
+      let errorData;
+      try {
+        errorData = JSON.parse(errorText);
+      } catch {
+        errorData = { error_summary: errorText };
+      }
 
       // Check if token expired
       if (response.status === 401) {
@@ -208,7 +220,12 @@ export async function uploadToDropbox(
         return { success: false, error: 'Session expired. Please reconnect Dropbox.' };
       }
 
-      return { success: false, error: error.error_summary || 'Upload failed' };
+      // Check for insufficient permissions
+      if (response.status === 403) {
+        return { success: false, error: 'No permission. Check Dropbox app scopes.' };
+      }
+
+      return { success: false, error: errorData.error_summary || `Upload failed (${response.status})` };
     }
 
     const result = await response.json();

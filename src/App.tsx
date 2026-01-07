@@ -916,6 +916,24 @@ const App: React.FC = () => {
       setIsProcessing(true);
       setProcessingMessage('Exporting...');
 
+      // Calculate the actual bounds of all visible layers
+      const visibleLayers = layers.filter(l => l.visible && l.image);
+      let maxWidth = canvasSize.width;
+      let maxHeight = canvasSize.height;
+
+      for (const layer of visibleLayers) {
+        if (layer.image) {
+          const layerWidth = layer.x + (layer.width || layer.image.width) * layer.scale;
+          const layerHeight = layer.y + (layer.height || layer.image.height) * layer.scale;
+          maxWidth = Math.max(maxWidth, layerWidth, layer.image.width * layer.scale);
+          maxHeight = Math.max(maxHeight, layerHeight, layer.image.height * layer.scale);
+        }
+      }
+
+      // Use the largest dimensions for export
+      const exportWidth = Math.ceil(maxWidth);
+      const exportHeight = Math.ceil(maxHeight);
+
       const composite = composeLayers(
         layers.map((l) => ({
           image: l.image,
@@ -928,8 +946,8 @@ const App: React.FC = () => {
           visible: l.visible,
           blendMode: l.blendMode,
         })),
-        canvasSize.width,
-        canvasSize.height
+        exportWidth,
+        exportHeight
       );
 
       const filename = `layermask-export-${Date.now()}.png`;
@@ -944,7 +962,8 @@ const App: React.FC = () => {
         if (uploadResult.success) {
           showToast({ type: 'success', message: `Exported & uploaded to ${uploadResult.path}` });
         } else {
-          showToast({ type: 'success', message: 'Exported (Dropbox upload failed)' });
+          console.error('Dropbox upload failed:', uploadResult.error);
+          showToast({ type: 'warning', message: `Exported (Dropbox: ${uploadResult.error || 'upload failed'})` });
         }
       } else {
         showToast({ type: 'success', message: 'Image exported' });
