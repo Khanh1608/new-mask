@@ -43,6 +43,37 @@ async function urlToBase64(url: string): Promise<string> {
 }
 
 /**
+ * Compress image to reduce size for upload
+ */
+async function compressImage(dataUrl: string, maxWidth = 2048, quality = 0.85): Promise<string> {
+  return new Promise((resolve) => {
+    const img = new Image();
+    img.onload = () => {
+      const canvas = document.createElement('canvas');
+      let { width, height } = img;
+
+      // Scale down if too large
+      if (width > maxWidth) {
+        height = (height * maxWidth) / width;
+        width = maxWidth;
+      }
+
+      canvas.width = width;
+      canvas.height = height;
+
+      const ctx = canvas.getContext('2d');
+      if (ctx) {
+        ctx.drawImage(img, 0, 0, width, height);
+      }
+
+      // Convert to JPEG for smaller size
+      resolve(canvas.toDataURL('image/jpeg', quality));
+    };
+    img.src = dataUrl;
+  });
+}
+
+/**
  * Upscale image using Crystal Upscaler via serverless function
  */
 export async function replicateUpscale(request: UpscaleRequest): Promise<UpscaleResponse> {
@@ -55,6 +86,18 @@ export async function replicateUpscale(request: UpscaleRequest): Promise<Upscale
       imageData = `data:image/png;base64,${imageData}`;
     }
 
+    // Compress image to avoid payload too large error (Vercel limit ~4.5MB)
+    const compressedImage = await compressImage(imageData, 1536, 0.8);
+
+    // Check payload size
+    const payloadSize = compressedImage.length;
+    if (payloadSize > 4 * 1024 * 1024) {
+      return {
+        success: false,
+        error: 'Image is too large. Please use a smaller image (max ~4MB after compression).',
+      };
+    }
+
     // Call serverless function
     const response = await fetch('/api/upscale', {
       method: 'POST',
@@ -62,11 +105,22 @@ export async function replicateUpscale(request: UpscaleRequest): Promise<Upscale
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        image: imageData,
+        image: compressedImage,
         scale: request.scale,
         enhanceFace: request.enhanceFace ?? true,
       }),
     });
+
+    // Handle non-JSON responses
+    const contentType = response.headers.get('content-type');
+    if (!contentType?.includes('application/json')) {
+      const text = await response.text();
+      console.error('Non-JSON response:', text);
+      return {
+        success: false,
+        error: `Server error: ${text.substring(0, 100)}...`,
+      };
+    }
 
     const data = await response.json();
 

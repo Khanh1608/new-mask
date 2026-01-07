@@ -1,0 +1,7 @@
+{
+  "functions": {
+    "api/upscale.ts": {
+      "maxDuration": 300
+    }
+  }
+}
