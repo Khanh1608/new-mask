@@ -43,15 +43,40 @@ export async function loadFaceModels(): Promise<void> {
 
 /**
  * Detect single face in canvas
+ * Uses TinyFaceDetector with options optimized for both desktop and mobile
  */
 export async function detectSingleFace(
   canvas: HTMLCanvasElement
 ): Promise<FaceDetectionResult | null> {
   await loadFaceModels();
 
-  const detection = await faceapi
-    .detectSingleFace(canvas, new faceapi.TinyFaceDetectorOptions())
+  // Try with default settings first
+  let detection = await faceapi
+    .detectSingleFace(canvas, new faceapi.TinyFaceDetectorOptions({
+      inputSize: 416,
+      scoreThreshold: 0.5,
+    }))
     .withFaceLandmarks();
+
+  // If no face found, try with lower threshold (mobile/low quality images)
+  if (!detection) {
+    detection = await faceapi
+      .detectSingleFace(canvas, new faceapi.TinyFaceDetectorOptions({
+        inputSize: 320,
+        scoreThreshold: 0.3,
+      }))
+      .withFaceLandmarks();
+  }
+
+  // Still no face? Try with even lower threshold
+  if (!detection) {
+    detection = await faceapi
+      .detectSingleFace(canvas, new faceapi.TinyFaceDetectorOptions({
+        inputSize: 224,
+        scoreThreshold: 0.2,
+      }))
+      .withFaceLandmarks();
+  }
 
   if (!detection) return null;
 

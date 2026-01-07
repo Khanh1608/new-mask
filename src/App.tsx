@@ -438,30 +438,50 @@ const App: React.FC = () => {
     }
 
     const baseLayer = layers.find((l) => l.type === 'BASE');
-    const overlayLayer = layers.find((l) => l.type === 'OVERLAY' && l.id === selectedLayerId);
+    // Try selected overlay first, then fall back to any overlay
+    let overlayLayer = layers.find((l) => l.type === 'OVERLAY' && l.id === selectedLayerId);
+    if (!overlayLayer) {
+      // Find the last (topmost) overlay layer
+      overlayLayer = [...layers].reverse().find((l) => l.type === 'OVERLAY');
+    }
 
-    if (!baseLayer?.image || !overlayLayer?.image) {
-      showToast({ type: 'warning', message: 'Need base and overlay layer with faces' });
+    if (!baseLayer?.image) {
+      showToast({ type: 'warning', message: 'Cần có ảnh gốc (base layer)' });
       return;
+    }
+
+    if (!overlayLayer?.image) {
+      showToast({ type: 'warning', message: 'Cần có ảnh overlay để căn chỉnh' });
+      return;
+    }
+
+    // Auto-select the overlay layer
+    if (selectedLayerId !== overlayLayer.id) {
+      setSelectedLayerId(overlayLayer.id);
     }
 
     try {
       setIsProcessing(true);
-      setProcessingMessage('Loading face detection models...');
+      setProcessingMessage('Đang tải mô hình nhận diện khuôn mặt...');
       await loadFaceModels();
 
-      setProcessingMessage('Detecting faces...');
+      setProcessingMessage('Đang phát hiện khuôn mặt...');
       const [baseFace, overlayFace] = await Promise.all([
         detectSingleFace(baseLayer.image),
         detectSingleFace(overlayLayer.image),
       ]);
 
-      if (!baseFace || !overlayFace) {
-        showToast({ type: 'error', message: 'Could not detect face in one or both images' });
+      if (!baseFace) {
+        showToast({ type: 'error', message: 'Không thể phát hiện khuôn mặt trong ảnh gốc' });
         return;
       }
 
-      setProcessingMessage('Calculating alignment...');
+      if (!overlayFace) {
+        showToast({ type: 'error', message: 'Không thể phát hiện khuôn mặt trong ảnh overlay' });
+        return;
+      }
+
+      setProcessingMessage('Đang tính toán vị trí...');
       const alignment = calculateFaceAlignment(baseFace, overlayFace, overlayLayer.image.width, overlayLayer.image.height);
       // Use inverted mask: hide overlay's face to reveal base's face underneath
       const faceMask = createInvertedFaceMask(overlayLayer.image.width, overlayLayer.image.height, overlayFace, 0.3, 1.15);
@@ -474,10 +494,10 @@ const App: React.FC = () => {
         mask: faceMask,
       });
 
-      showToast({ type: 'success', message: 'Face aligned successfully' });
+      showToast({ type: 'success', message: 'Căn chỉnh khuôn mặt thành công!' });
     } catch (error) {
       console.error('Auto align error:', error);
-      showToast({ type: 'error', message: 'Face alignment failed' });
+      showToast({ type: 'error', message: 'Căn chỉnh thất bại. Hãy thử ảnh khác.' });
     } finally {
       setIsProcessing(false);
     }
