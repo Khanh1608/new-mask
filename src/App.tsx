@@ -42,6 +42,7 @@ import {
 // API
 import { initGemini, geminiTryOn, isGeminiConfigured } from './api/gemini';
 import { initOpenAI, openaiTryOn, isOpenAIConfigured } from './api/openai';
+import { initReplicate, replicateUpscale, isReplicateConfigured } from './api/replicate';
 
 // Types
 import type { Layer, ToolType, BrushSettings, ViewTransform } from './types';
@@ -95,15 +96,16 @@ const App: React.FC = () => {
   // Get selected layer
   const selectedLayer = layers.find((l) => l.id === selectedLayerId) || null;
 
-  // Initialize API keys from localStorage
+  // Initialize API keys from localStorage or env
   useEffect(() => {
     const geminiKey = localStorage.getItem('gemini_api_key');
     const openaiKey = localStorage.getItem('openai_api_key');
+    const replicateKey = localStorage.getItem('replicate_api_key');
     if (geminiKey) initGemini(geminiKey);
     if (openaiKey) initOpenAI(openaiKey);
-    if (!geminiKey && !openaiKey) {
-      showToast({ type: 'info', message: 'Set API keys in localStorage for AI features', duration: 5000 });
-    }
+    if (replicateKey) initReplicate(replicateKey);
+    // Also try to init from env variables
+    initReplicate();
   }, []);
 
   // Canvas rendering
@@ -546,9 +548,82 @@ const App: React.FC = () => {
     }
   }, [layers, showToast]);
 
-  const handleAIUpscale = useCallback(async (_options: UpscaleOptions) => {
-    showToast({ type: 'info', message: 'Upscale feature requires Replicate API integration' });
-  }, [showToast]);
+  const handleAIUpscale = useCallback(async (options: UpscaleOptions) => {
+    if (!isReplicateConfigured()) {
+      showToast({ type: 'error', message: 'Replicate API key not configured' });
+      return;
+    }
+
+    try {
+      setIsProcessing(true);
+      setProcessingMessage(`Upscaling ${options.scale}x... This may take 30-120 seconds`);
+
+      let imageToUpscale: string;
+
+      if (options.mode === 'layer') {
+        // Upscale selected layer only
+        const selectedLayer = layers.find(l => l.id === selectedLayerId);
+        if (!selectedLayer?.image) {
+          showToast({ type: 'warning', message: 'No layer selected' });
+          return;
+        }
+        imageToUpscale = canvasToBase64(selectedLayer.image);
+      } else {
+        // Upscale full composite
+        if (layers.length === 0) {
+          showToast({ type: 'warning', message: 'No layers to upscale' });
+          return;
+        }
+        const composite = composeLayers(layers, canvasSize.width, canvasSize.height);
+        imageToUpscale = canvasToBase64(composite);
+      }
+
+      const response = await replicateUpscale({
+        image: imageToUpscale,
+        scale: options.scale,
+        enhanceFace: options.enhanceFace,
+      });
+
+      if (!response.success || !response.resultImage) {
+        showToast({ type: 'error', message: response.error || 'Upscale failed' });
+        return;
+      }
+
+      // Create new layer with upscaled image
+      const upscaledImage = await loadImageFromBase64(response.resultImage);
+      const newLayer: Layer = {
+        id: `layer-${Date.now()}`,
+        name: `Upscaled ${options.scale}x`,
+        type: 'AI_GENERATED',
+        image: upscaledImage,
+        mask: null,
+        x: 0,
+        y: 0,
+        width: upscaledImage.width,
+        height: upscaledImage.height,
+        scale: 1,
+        rotation: 0,
+        opacity: 1,
+        visible: true,
+        locked: false,
+        blendMode: 'source-over',
+        thumbnail: createThumbnail(upscaledImage),
+      };
+
+      setLayers(prev => [...prev, newLayer]);
+      setSelectedLayerId(newLayer.id);
+
+      const timeStr = response.processingTime
+        ? ` (${(response.processingTime / 1000).toFixed(1)}s)`
+        : '';
+      showToast({ type: 'success', message: `Upscaled to ${options.scale}x successfully${timeStr}` });
+    } catch (error) {
+      console.error('Upscale error:', error);
+      showToast({ type: 'error', message: 'Upscale failed' });
+    } finally {
+      setIsProcessing(false);
+    }
+  }, [layers, selectedLayerId, canvasSize, showToast]);
 
   // Project management
   const handleSaveProject = useCallback(() => {

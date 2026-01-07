@@ -83,6 +83,7 @@ export interface UpscaleResponse {
   success: boolean;
   resultImage?: string;
   error?: string;
+  processingTime?: number;
 }
 
 export interface FaceDetectionResult {
