@@ -16,8 +16,9 @@ let config: GeminiConfig | null = null;
 
 /**
  * Initialize Gemini API
+ * Default: gemini-3-pro-image-preview (Nano Banana Pro) for best image generation
  */
-export function initGemini(apiKey: string, model = 'gemini-3-flash'): void {
+export function initGemini(apiKey: string, model = 'gemini-3-pro-image-preview'): void {
   config = { apiKey, model };
 }
 
