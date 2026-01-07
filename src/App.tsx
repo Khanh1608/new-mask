@@ -79,6 +79,7 @@ const App: React.FC = () => {
   const [isDragging, setIsDragging] = useState(false);
   const [isPanning, setIsPanning] = useState(false);
   const [lastPointer, setLastPointer] = useState({ x: 0, y: 0 });
+  const [lastClientPos, setLastClientPos] = useState({ x: 0, y: 0 }); // Raw client position for panning
   const [dragStart, setDragStart] = useState({ x: 0, y: 0, layerX: 0, layerY: 0 });
 
   // State - Modals
@@ -112,6 +113,30 @@ const App: React.FC = () => {
     // Also try to init from env variables
     initReplicate();
   }, []);
+
+  // Store previous layer count to detect when new layer is added
+  const prevLayerCountRef = React.useRef(0);
+
+  // Auto-fit when new layer is added (especially important on mobile)
+  useEffect(() => {
+    const isMobile = window.innerWidth < 768;
+    // Only auto-fit when layer count increases (new layer added)
+    if (isMobile && layers.length > prevLayerCountRef.current && layers.length > 0) {
+      const container = containerRef.current;
+      const baseLayer = layers.find((l) => l.type === 'BASE');
+      if (container && baseLayer?.image) {
+        const rect = container.getBoundingClientRect();
+        const padding = 16;
+        const scaleX = (rect.width - padding * 2) / baseLayer.image.width;
+        const scaleY = (rect.height - padding * 2) / baseLayer.image.height;
+        const scale = Math.min(scaleX, scaleY, 2);
+        const x = (rect.width - baseLayer.image.width * scale) / 2;
+        const y = (rect.height - baseLayer.image.height * scale) / 2;
+        setViewTransform({ x, y, scale });
+      }
+    }
+    prevLayerCountRef.current = layers.length;
+  }, [layers]);
 
   // Canvas rendering
   const renderCanvas = useCallback(() => {
@@ -331,6 +356,7 @@ const App: React.FC = () => {
   const handlePointerDown = useCallback((e: React.PointerEvent) => {
     const pos = getPointerPos(e);
     setLastPointer(pos);
+    setLastClientPos({ x: e.clientX, y: e.clientY }); // Save raw position for panning
 
     if (activeTool === 'HAND' || e.button === 1) {
       setIsPanning(true);
@@ -358,7 +384,11 @@ const App: React.FC = () => {
     const pos = getPointerPos(e);
 
     if (isPanning) {
-      setViewTransform((prev) => ({ ...prev, x: prev.x + e.movementX, y: prev.y + e.movementY }));
+      // Use client position delta instead of movementX/Y for better mobile support
+      const dx = e.clientX - lastClientPos.x;
+      const dy = e.clientY - lastClientPos.y;
+      setViewTransform((prev) => ({ ...prev, x: prev.x + dx, y: prev.y + dy }));
+      setLastClientPos({ x: e.clientX, y: e.clientY });
       return;
     }
 
@@ -374,7 +404,7 @@ const App: React.FC = () => {
     }
 
     setLastPointer(pos);
-  }, [isPanning, isPainting, isDragging, selectedLayer, lastPointer, dragStart, brushSettings, getPointerPos, updateLayer]);
+  }, [isPanning, isPainting, isDragging, selectedLayer, lastPointer, lastClientPos, dragStart, brushSettings, getPointerPos, updateLayer]);
 
   const handlePointerUp = useCallback(() => {
     setIsPainting(false);
@@ -400,10 +430,14 @@ const App: React.FC = () => {
     if (!container || !baseLayer?.image) return;
 
     const rect = container.getBoundingClientRect();
-    const padding = 40;
+    // Less padding on mobile for better view
+    const isMobile = rect.width < 768;
+    const padding = isMobile ? 16 : 40;
     const scaleX = (rect.width - padding * 2) / baseLayer.image.width;
     const scaleY = (rect.height - padding * 2) / baseLayer.image.height;
-    const scale = Math.min(scaleX, scaleY, 1);
+    // Allow scale > 1 on mobile if image is smaller than screen
+    const maxScale = isMobile ? 2 : 1;
+    const scale = Math.min(scaleX, scaleY, maxScale);
     const x = (rect.width - baseLayer.image.width * scale) / 2;
     const y = (rect.height - baseLayer.image.height * scale) / 2;
     setViewTransform({ x, y, scale });
@@ -834,6 +868,7 @@ const App: React.FC = () => {
             className="w-full h-full"
             style={{
               cursor: activeTool === 'HAND' ? 'grab' : activeTool === 'BRUSH' ? 'crosshair' : 'default',
+              touchAction: 'none', // Prevent browser gestures on mobile
             }}
             onPointerDown={handlePointerDown}
             onPointerMove={handlePointerMove}
