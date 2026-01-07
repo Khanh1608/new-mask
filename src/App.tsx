@@ -482,7 +482,16 @@ const App: React.FC = () => {
       }
 
       setProcessingMessage('Đang tính toán vị trí...');
-      const alignment = calculateFaceAlignment(baseFace, overlayFace, overlayLayer.image.width, overlayLayer.image.height);
+      // Pass base dimensions for minimum coverage calculation (90% coverage)
+      const alignment = calculateFaceAlignment(
+        baseFace,
+        overlayFace,
+        overlayLayer.image.width,
+        overlayLayer.image.height,
+        baseLayer.image.width,
+        baseLayer.image.height,
+        0.9
+      );
       // Use inverted mask: hide overlay's face to reveal base's face underneath
       const faceMask = createInvertedFaceMask(overlayLayer.image.width, overlayLayer.image.height, overlayFace, 0.3, 1.15);
 

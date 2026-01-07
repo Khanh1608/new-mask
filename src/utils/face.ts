@@ -127,12 +127,16 @@ export async function detectSingleFace(
 
 /**
  * Calculate alignment transform to match overlay face to base face
+ * Now includes minimum coverage to ensure overlay covers enough of base image
  */
 export function calculateFaceAlignment(
   baseFace: FaceDetectionResult,
   overlayFace: FaceDetectionResult,
   overlayWidth: number,
-  overlayHeight: number
+  overlayHeight: number,
+  baseWidth?: number,
+  baseHeight?: number,
+  minCoverage = 0.9 // Minimum 90% coverage of base height
 ): FaceAlignment {
   if (!baseFace.landmarks || !overlayFace.landmarks) {
     // Fallback: use bounding boxes
@@ -157,8 +161,20 @@ export function calculateFaceAlignment(
       Math.pow(overlayL.rightEye.y - overlayL.leftEye.y, 2)
   );
 
-  // Calculate scale based on eye distance
-  const scale = baseEyeDist / overlayEyeDist;
+  // Calculate scale based on eye distance (face alignment)
+  const faceScale = baseEyeDist / overlayEyeDist;
+
+  // Calculate minimum scale for coverage (if base dimensions provided)
+  let minScale = faceScale;
+  if (baseWidth && baseHeight) {
+    // Scale needed for overlay to cover minCoverage of base
+    const minHeightScale = (baseHeight * minCoverage) / overlayHeight;
+    const minWidthScale = (baseWidth * minCoverage) / overlayWidth;
+    minScale = Math.max(minHeightScale, minWidthScale);
+  }
+
+  // Use the larger scale: either face-based or minimum coverage
+  const scale = Math.max(faceScale, minScale);
 
   // Calculate rotation difference
   const rotation = baseFace.angle - overlayFace.angle;
@@ -192,9 +208,26 @@ export function calculateFaceAlignment(
   const transformedX = (relX * cos - relY * sin) * scale;
   const transformedY = (relX * sin + relY * cos) * scale;
 
-  // Calculate final position
-  const x = baseEyeCenter.x - transformedX - overlayCenterX * scale;
-  const y = baseEyeCenter.y - transformedY - overlayCenterY * scale;
+  // Calculate final position to align faces
+  let x = baseEyeCenter.x - transformedX - overlayCenterX * scale;
+  let y = baseEyeCenter.y - transformedY - overlayCenterY * scale;
+
+  // If we used minimum coverage scale (larger than face scale),
+  // center the overlay on base while keeping it from going too far off
+  if (baseWidth && baseHeight && scale > faceScale) {
+    // Prefer centering horizontally
+    const scaledWidth = overlayWidth * scale;
+    const scaledHeight = overlayHeight * scale;
+
+    // Center horizontally but keep face roughly aligned
+    const centerX = (baseWidth - scaledWidth) / 2;
+    // Blend between face-aligned position and centered position
+    const blendFactor = Math.min(1, (scale - faceScale) / faceScale);
+    x = x * (1 - blendFactor * 0.5) + centerX * (blendFactor * 0.5);
+
+    // For Y, keep face aligned but don't go too negative
+    y = Math.max(y, -(scaledHeight - baseHeight) * 0.3);
+  }
 
   return { x, y, scale, rotation };
 }
