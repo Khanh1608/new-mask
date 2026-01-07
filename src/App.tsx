@@ -311,7 +311,22 @@ const App: React.FC = () => {
       setSelectedLayerId(baseLayer.id);
       clearHistory();
       setTimeout(() => fitToScreen(), 100);
-      showToast({ type: 'success', message: 'Project created' });
+
+      // Auto upload base image to Dropbox if enabled
+      const autoUploadSettings = getAutoUploadSettings();
+      if (autoUploadSettings.enabled && autoUploadSettings.uploadBase && isDropboxConnected()) {
+        setProcessingMessage('Uploading to Dropbox...');
+        const imageData = canvasToBase64(image);
+        const filename = `base-${Date.now()}.png`;
+        const uploadResult = await uploadToDropbox(imageData, filename, autoUploadSettings.folder);
+        if (uploadResult.success) {
+          showToast({ type: 'success', message: `Project created & uploaded to ${uploadResult.path}` });
+        } else {
+          showToast({ type: 'success', message: 'Project created (Dropbox upload failed)' });
+        }
+      } else {
+        showToast({ type: 'success', message: 'Project created' });
+      }
     } catch {
       showToast({ type: 'error', message: 'Failed to load image' });
     } finally {
@@ -916,6 +931,24 @@ const App: React.FC = () => {
       setIsProcessing(true);
       setProcessingMessage('Exporting...');
 
+      // Calculate the actual bounds of all visible layers
+      const visibleLayers = layers.filter(l => l.visible && l.image);
+      let maxWidth = canvasSize.width;
+      let maxHeight = canvasSize.height;
+
+      for (const layer of visibleLayers) {
+        if (layer.image) {
+          const layerWidth = layer.x + (layer.width || layer.image.width) * layer.scale;
+          const layerHeight = layer.y + (layer.height || layer.image.height) * layer.scale;
+          maxWidth = Math.max(maxWidth, layerWidth, layer.image.width * layer.scale);
+          maxHeight = Math.max(maxHeight, layerHeight, layer.image.height * layer.scale);
+        }
+      }
+
+      // Use the largest dimensions for export
+      const exportWidth = Math.ceil(maxWidth);
+      const exportHeight = Math.ceil(maxHeight);
+
       const composite = composeLayers(
         layers.map((l) => ({
           image: l.image,
@@ -928,8 +961,8 @@ const App: React.FC = () => {
           visible: l.visible,
           blendMode: l.blendMode,
         })),
-        canvasSize.width,
-        canvasSize.height
+        exportWidth,
+        exportHeight
       );
 
       const filename = `layermask-export-${Date.now()}.png`;
@@ -944,13 +977,80 @@ const App: React.FC = () => {
         if (uploadResult.success) {
           showToast({ type: 'success', message: `Exported & uploaded to ${uploadResult.path}` });
         } else {
-          showToast({ type: 'success', message: 'Exported (Dropbox upload failed)' });
+          console.error('Dropbox upload failed:', uploadResult.error);
+          showToast({ type: 'warning', message: `Exported (Dropbox: ${uploadResult.error || 'upload failed'})` });
         }
       } else {
         showToast({ type: 'success', message: 'Image exported' });
       }
     } catch {
       showToast({ type: 'error', message: 'Export failed' });
+    } finally {
+      setIsProcessing(false);
+    }
+  }, [layers, canvasSize, showToast]);
+
+  // Upload current canvas to Dropbox
+  const handleUploadToCloud = useCallback(async () => {
+    if (layers.length === 0) {
+      showToast({ type: 'warning', message: 'Nothing to upload' });
+      return;
+    }
+
+    if (!isDropboxConnected()) {
+      showToast({ type: 'warning', message: 'Please connect Dropbox first' });
+      return;
+    }
+
+    try {
+      setIsProcessing(true);
+      setProcessingMessage('Uploading to Dropbox...');
+
+      // Calculate bounds for all visible layers
+      const visibleLayers = layers.filter(l => l.visible && l.image);
+      let maxWidth = canvasSize.width;
+      let maxHeight = canvasSize.height;
+
+      for (const layer of visibleLayers) {
+        if (layer.image) {
+          const layerWidth = layer.x + (layer.width || layer.image.width) * layer.scale;
+          const layerHeight = layer.y + (layer.height || layer.image.height) * layer.scale;
+          maxWidth = Math.max(maxWidth, layerWidth, layer.image.width * layer.scale);
+          maxHeight = Math.max(maxHeight, layerHeight, layer.image.height * layer.scale);
+        }
+      }
+
+      const exportWidth = Math.ceil(maxWidth);
+      const exportHeight = Math.ceil(maxHeight);
+
+      const composite = composeLayers(
+        layers.map((l) => ({
+          image: l.image,
+          mask: l.mask,
+          x: l.x,
+          y: l.y,
+          scale: l.scale,
+          rotation: l.rotation,
+          opacity: l.opacity,
+          visible: l.visible,
+          blendMode: l.blendMode,
+        })),
+        exportWidth,
+        exportHeight
+      );
+
+      const imageData = canvasToBase64(composite);
+      const settings = getAutoUploadSettings();
+      const filename = `layermask-${Date.now()}.png`;
+      const uploadResult = await uploadToDropbox(imageData, filename, settings.folder);
+
+      if (uploadResult.success) {
+        showToast({ type: 'success', message: `Uploaded to ${uploadResult.path}` });
+      } else {
+        showToast({ type: 'error', message: uploadResult.error || 'Upload failed' });
+      }
+    } catch {
+      showToast({ type: 'error', message: 'Upload failed' });
     } finally {
       setIsProcessing(false);
     }
@@ -1013,6 +1113,8 @@ const App: React.FC = () => {
           onSaveProject={handleSaveProject}
           onLoadProject={handleLoadProject}
           onExport={handleExport}
+          onUploadToCloud={handleUploadToCloud}
+          isCloudConnected={isDropboxConnected()}
           onShowShortcuts={() => setShowShortcutsModal(true)}
           onShowSettings={() => setShowSettingsModal(true)}
           onShowCloud={() => setShowCloudModal(true)}
