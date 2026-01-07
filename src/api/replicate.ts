@@ -44,6 +44,7 @@ async function urlToBase64(url: string): Promise<string> {
 
 /**
  * Compress image to reduce size for upload
+ * Fills transparent areas with white (Crystal Upscaler doesn't handle transparency well)
  */
 async function compressImage(dataUrl: string, maxWidth = 2048, quality = 0.85): Promise<string> {
   return new Promise((resolve) => {
@@ -63,6 +64,10 @@ async function compressImage(dataUrl: string, maxWidth = 2048, quality = 0.85): 
 
       const ctx = canvas.getContext('2d');
       if (ctx) {
+        // Fill with white background first (for transparent areas)
+        ctx.fillStyle = '#FFFFFF';
+        ctx.fillRect(0, 0, width, height);
+        // Draw image on top
         ctx.drawImage(img, 0, 0, width, height);
       }
 
