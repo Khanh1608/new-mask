@@ -82,6 +82,11 @@ const App: React.FC = () => {
   const [lastClientPos, setLastClientPos] = useState({ x: 0, y: 0 }); // Raw client position for panning
   const [dragStart, setDragStart] = useState({ x: 0, y: 0, layerX: 0, layerY: 0 });
 
+  // State - Pinch-to-zoom for mobile
+  const [isPinching, setIsPinching] = useState(false);
+  const [lastPinchDistance, setLastPinchDistance] = useState(0);
+  const [lastPinchCenter, setLastPinchCenter] = useState({ x: 0, y: 0 });
+
   // State - Modals
   const [showTryOnModal, setShowTryOnModal] = useState(false);
   const [showUpscaleModal, setShowUpscaleModal] = useState(false);
@@ -123,17 +128,35 @@ const App: React.FC = () => {
     // Only auto-fit when layer count increases (new layer added)
     if (isMobile && layers.length > prevLayerCountRef.current && layers.length > 0) {
       const container = containerRef.current;
-      const baseLayer = layers.find((l) => l.type === 'BASE');
-      if (container && baseLayer?.image) {
-        const rect = container.getBoundingClientRect();
-        const padding = 16;
-        const scaleX = (rect.width - padding * 2) / baseLayer.image.width;
-        const scaleY = (rect.height - padding * 2) / baseLayer.image.height;
-        const scale = Math.min(scaleX, scaleY, 2);
-        const x = (rect.width - baseLayer.image.width * scale) / 2;
-        const y = (rect.height - baseLayer.image.height * scale) / 2;
-        setViewTransform({ x, y, scale });
+      if (!container) return;
+
+      // Calculate bounding box of all visible layers
+      let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+      for (const layer of layers) {
+        if (!layer.visible || !layer.image) continue;
+        const layerRight = layer.x + layer.image.width * layer.scale;
+        const layerBottom = layer.y + layer.image.height * layer.scale;
+        minX = Math.min(minX, layer.x);
+        minY = Math.min(minY, layer.y);
+        maxX = Math.max(maxX, layerRight);
+        maxY = Math.max(maxY, layerBottom);
       }
+
+      if (minX === Infinity) return; // No visible layers
+
+      const contentWidth = maxX - minX;
+      const contentHeight = maxY - minY;
+      const rect = container.getBoundingClientRect();
+      const padding = 16;
+
+      const scaleX = (rect.width - padding * 2) / contentWidth;
+      const scaleY = (rect.height - padding * 2) / contentHeight;
+      const scale = Math.min(scaleX, scaleY, 2);
+
+      // Center the content
+      const x = (rect.width - contentWidth * scale) / 2 - minX * scale;
+      const y = (rect.height - contentHeight * scale) / 2 - minY * scale;
+      setViewTransform({ x, y, scale });
     }
     prevLayerCountRef.current = layers.length;
   }, [layers]);
@@ -381,6 +404,9 @@ const App: React.FC = () => {
   }, [activeTool, selectedLayer, getPointerPos, saveState]);
 
   const handlePointerMove = useCallback((e: React.PointerEvent) => {
+    // Don't process pointer move during pinch gesture
+    if (isPinching) return;
+
     const pos = getPointerPos(e);
 
     if (isPanning) {
@@ -404,12 +430,82 @@ const App: React.FC = () => {
     }
 
     setLastPointer(pos);
-  }, [isPanning, isPainting, isDragging, selectedLayer, lastPointer, lastClientPos, dragStart, brushSettings, getPointerPos, updateLayer]);
+  }, [isPinching, isPanning, isPainting, isDragging, selectedLayer, lastPointer, lastClientPos, dragStart, brushSettings, getPointerPos, updateLayer]);
 
   const handlePointerUp = useCallback(() => {
     setIsPainting(false);
     setIsDragging(false);
     setIsPanning(false);
+  }, []);
+
+  // Touch handlers for pinch-to-zoom on mobile
+  const getTouchDistance = (touches: React.TouchList): number => {
+    if (touches.length < 2) return 0;
+    const dx = touches[0].clientX - touches[1].clientX;
+    const dy = touches[0].clientY - touches[1].clientY;
+    return Math.sqrt(dx * dx + dy * dy);
+  };
+
+  const getTouchCenter = (touches: React.TouchList): { x: number; y: number } => {
+    if (touches.length < 2) return { x: touches[0].clientX, y: touches[0].clientY };
+    return {
+      x: (touches[0].clientX + touches[1].clientX) / 2,
+      y: (touches[0].clientY + touches[1].clientY) / 2,
+    };
+  };
+
+  const handleTouchStart = useCallback((e: React.TouchEvent) => {
+    if (e.touches.length === 2) {
+      // Two finger touch - start pinch
+      e.preventDefault();
+      setIsPinching(true);
+      setIsPanning(false);
+      setIsDragging(false);
+      setIsPainting(false);
+      const distance = getTouchDistance(e.touches);
+      const center = getTouchCenter(e.touches);
+      setLastPinchDistance(distance);
+      setLastPinchCenter(center);
+    }
+  }, []);
+
+  const handleTouchMove = useCallback((e: React.TouchEvent) => {
+    if (e.touches.length === 2 && isPinching) {
+      e.preventDefault();
+      const distance = getTouchDistance(e.touches);
+      const center = getTouchCenter(e.touches);
+      const rect = canvasRef.current?.getBoundingClientRect();
+      if (!rect) return;
+
+      // Calculate zoom
+      const scaleDelta = distance / lastPinchDistance;
+      const newScale = Math.min(Math.max(viewTransform.scale * scaleDelta, 0.1), 10);
+
+      // Zoom towards pinch center
+      const centerX = center.x - rect.left;
+      const centerY = center.y - rect.top;
+      const newX = centerX - ((centerX - viewTransform.x) / viewTransform.scale) * newScale;
+      const newY = centerY - ((centerY - viewTransform.y) / viewTransform.scale) * newScale;
+
+      // Also pan based on center movement
+      const panDx = center.x - lastPinchCenter.x;
+      const panDy = center.y - lastPinchCenter.y;
+
+      setViewTransform({
+        x: newX + panDx,
+        y: newY + panDy,
+        scale: newScale,
+      });
+
+      setLastPinchDistance(distance);
+      setLastPinchCenter(center);
+    }
+  }, [isPinching, lastPinchDistance, lastPinchCenter, viewTransform]);
+
+  const handleTouchEnd = useCallback((e: React.TouchEvent) => {
+    if (e.touches.length < 2) {
+      setIsPinching(false);
+    }
   }, []);
 
   const paint = useCallback((x: number, y: number) => {
@@ -874,6 +970,9 @@ const App: React.FC = () => {
             onPointerMove={handlePointerMove}
             onPointerUp={handlePointerUp}
             onPointerLeave={handlePointerUp}
+            onTouchStart={handleTouchStart}
+            onTouchMove={handleTouchMove}
+            onTouchEnd={handleTouchEnd}
           />
         </div>
       </div>
