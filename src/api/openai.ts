@@ -17,7 +17,7 @@ let config: OpenAIConfig | null = null;
 /**
  * Initialize OpenAI API
  */
-export function initOpenAI(apiKey: string, model = 'gpt-4o'): void {
+export function initOpenAI(apiKey: string, model = 'gpt-4o-2024-11-20'): void {
   config = { apiKey, model };
 }
 
