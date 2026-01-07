@@ -233,15 +233,21 @@ export function calculateFaceAlignment(
 }
 
 /**
- * Create face mask using landmarks with smooth edges
- * Uses bezier curves and proper feathering for natural look
+ * Create face mask using 68 landmarks with smooth edges
+ *
+ * Algorithm:
+ * 1. Use jawline points (0-16) from 68 landmarks
+ * 2. Estimate forehead using geometric interpolation (foreheadRatio)
+ * 3. Draw Bezier curve from temple to temple over forehead
+ * 4. Apply blur BEFORE cutting for soft edges
+ * 5. Use stroke to expand mask area (covers skin at edges)
  */
 export function createFaceMask(
   width: number,
   height: number,
   face: FaceDetectionResult,
-  foreheadRatio = 0.3,
-  expand = 1.1
+  foreheadRatio = 0.8,
+  strokeWidth = 15
 ): HTMLCanvasElement {
   const canvas = document.createElement('canvas');
   canvas.width = width;
@@ -253,149 +259,96 @@ export function createFaceMask(
     if (ctx) {
       const cx = face.x + face.width / 2;
       const cy = face.y + face.height / 2;
-      const rx = (face.width / 2) * expand;
-      const ry = (face.height / 2) * expand;
+      const rx = (face.width / 2) * 1.3;
+      const ry = (face.height / 2) * 1.3;
 
-      // Create radial gradient for soft edges
-      const gradient = ctx.createRadialGradient(cx, cy, 0, cx, cy, Math.max(rx, ry));
-      gradient.addColorStop(0, 'white');
-      gradient.addColorStop(0.7, 'white');
-      gradient.addColorStop(1, 'rgba(255,255,255,0)');
-
-      ctx.fillStyle = gradient;
+      // Apply blur BEFORE drawing
+      ctx.filter = 'blur(8px)';
+      ctx.fillStyle = 'white';
+      ctx.strokeStyle = 'white';
+      ctx.lineWidth = strokeWidth;
       ctx.beginPath();
-      ctx.ellipse(cx, cy, rx * 1.2, ry * 1.2, 0, 0, Math.PI * 2);
+      ctx.ellipse(cx, cy, rx, ry, 0, 0, Math.PI * 2);
       ctx.fill();
+      ctx.stroke();
+      ctx.filter = 'none';
     }
     return canvas;
   }
 
   const landmarks = face.landmarks;
-  const jawLine = landmarks.jawLine;
+  const jawLine = landmarks.jawLine; // Points 0-16
 
-  // Calculate key points
-  const eyeCenterY = (landmarks.leftEye.y + landmarks.rightEye.y) / 2;
-  const faceTop = face.y;
-  const foreheadHeight = (eyeCenterY - faceTop) * (1 + foreheadRatio);
+  // Calculate face height (chin to eyebrows)
+  const chinY = jawLine[8].y; // Point 8 is chin
+  const eyebrowY = (landmarks.leftEye.y + landmarks.rightEye.y) / 2 - face.height * 0.15;
+  const faceHeight = chinY - eyebrowY;
 
-  // Expand factor for the mask
-  const ex = expand;
+  // Estimate forehead height using foreheadRatio
+  const foreheadHeight = faceHeight * foreheadRatio;
 
-  // Create face center for gradient
-  const faceCenterX = face.x + face.width / 2;
-  const faceCenterY = face.y + face.height / 2;
+  // Temple points (start and end of jawline - points 0 and 16)
+  const leftTemple = jawLine[0];
+  const rightTemple = jawLine[jawLine.length - 1];
 
-  // Create smooth path using bezier curves
+  // Calculate forehead top point (center of forehead arc)
+  const foreheadTopY = eyebrowY - foreheadHeight;
+  const foreheadCenterX = (leftTemple.x + rightTemple.x) / 2;
+
+  // Apply blur BEFORE drawing for soft edges
+  ctx.filter = 'blur(8px)';
   ctx.fillStyle = 'white';
+  ctx.strokeStyle = 'white';
+  ctx.lineWidth = strokeWidth; // Expansion: nới rộng vùng cắt 7-8px
+  ctx.lineJoin = 'round';
+  ctx.lineCap = 'round';
+
   ctx.beginPath();
 
-  // Forehead points (expanded)
-  const foreheadLeft = {
-    x: faceCenterX - (face.width * 0.55 * ex),
-    y: eyeCenterY - foreheadHeight * ex,
-  };
-  const foreheadRight = {
-    x: faceCenterX + (face.width * 0.55 * ex),
-    y: eyeCenterY - foreheadHeight * ex,
-  };
-  const foreheadTop = {
-    x: faceCenterX,
-    y: eyeCenterY - foreheadHeight * ex * 1.1,
-  };
-
   // Start from left temple
-  ctx.moveTo(foreheadLeft.x, foreheadLeft.y);
+  ctx.moveTo(leftTemple.x, leftTemple.y);
 
-  // Draw forehead with smooth curve
+  // Draw Bezier curve for forehead (vòm trán)
+  // Control points create a nice arc over the head
   ctx.bezierCurveTo(
-    foreheadLeft.x + face.width * 0.2, foreheadTop.y,
-    foreheadRight.x - face.width * 0.2, foreheadTop.y,
-    foreheadRight.x, foreheadRight.y
+    leftTemple.x, foreheadTopY + foreheadHeight * 0.3,  // Left control
+    foreheadCenterX, foreheadTopY,                       // Top control (apex of forehead)
+    rightTemple.x, rightTemple.y                         // End at right temple
   );
 
-  // Draw right side of face using smooth bezier through jaw points
-  // Use every other jaw point for smoother curve
-  const rightJaw = jawLine.slice(Math.floor(jawLine.length / 2));
-  if (rightJaw.length > 2) {
-    const p1 = rightJaw[0];
-    const p2 = rightJaw[Math.floor(rightJaw.length / 2)];
-    const p3 = rightJaw[rightJaw.length - 1];
+  // Actually we need a better forehead curve - use quadratic through top
+  ctx.moveTo(leftTemple.x, leftTemple.y);
 
-    // Expand points outward from face center
-    const expandPoint = (p: {x: number, y: number}) => ({
-      x: faceCenterX + (p.x - faceCenterX) * ex,
-      y: faceCenterY + (p.y - faceCenterY) * ex,
-    });
+  // Draw smooth forehead arc
+  ctx.quadraticCurveTo(
+    foreheadCenterX, foreheadTopY,
+    rightTemple.x, rightTemple.y
+  );
 
-    const ep1 = expandPoint(p1);
-    const ep2 = expandPoint(p2);
-    const ep3 = expandPoint(p3);
+  // Draw along jawline (points 16 -> 0)
+  // Use smooth curve through all jaw points
+  for (let i = jawLine.length - 2; i >= 0; i--) {
+    const curr = jawLine[i];
+    const next = jawLine[Math.max(0, i - 1)];
 
-    ctx.bezierCurveTo(
-      foreheadRight.x + face.width * 0.05, ep1.y - face.height * 0.1,
-      ep1.x + face.width * 0.05, ep1.y,
-      ep1.x, ep1.y
-    );
-    ctx.quadraticCurveTo(ep2.x, ep2.y, ep3.x, ep3.y);
-  }
-
-  // Draw left side of face (mirror of right side)
-  const leftJaw = jawLine.slice(0, Math.floor(jawLine.length / 2) + 1).reverse();
-  if (leftJaw.length > 2) {
-    const p2 = leftJaw[Math.floor(leftJaw.length / 2)];
-    const p3 = leftJaw[leftJaw.length - 1];
-
-    const expandPoint = (p: {x: number, y: number}) => ({
-      x: faceCenterX + (p.x - faceCenterX) * ex,
-      y: faceCenterY + (p.y - faceCenterY) * ex,
-    });
-
-    const ep2 = expandPoint(p2);
-    const ep3 = expandPoint(p3);
-
-    ctx.quadraticCurveTo(ep2.x, ep2.y, ep3.x, ep3.y);
-    ctx.bezierCurveTo(
-      ep3.x - face.width * 0.05, ep3.y,
-      foreheadLeft.x - face.width * 0.05, ep3.y - face.height * 0.1,
-      foreheadLeft.x, foreheadLeft.y
-    );
+    // Use quadratic curve for smoother jawline
+    const midX = (curr.x + next.x) / 2;
+    const midY = (curr.y + next.y) / 2;
+    ctx.quadraticCurveTo(curr.x, curr.y, midX, midY);
   }
 
   ctx.closePath();
+
+  // Fill the mask
   ctx.fill();
 
-  // Apply multiple blur passes for smooth feathering
-  applyGaussianBlur(ctx, canvas, width, height, 15);
-  applyGaussianBlur(ctx, canvas, width, height, 10);
-  applyGaussianBlur(ctx, canvas, width, height, 5);
+  // Stroke to expand the mask area (che lấp phần da cổ/mặt)
+  ctx.stroke();
+
+  // Reset filter
+  ctx.filter = 'none';
 
   return canvas;
-}
-
-/**
- * Apply gaussian blur effect using canvas filter
- */
-function applyGaussianBlur(
-  ctx: CanvasRenderingContext2D,
-  canvas: HTMLCanvasElement,
-  width: number,
-  height: number,
-  radius: number
-): void {
-  // Create temp canvas for blur
-  const tempCanvas = document.createElement('canvas');
-  tempCanvas.width = width;
-  tempCanvas.height = height;
-  const tempCtx = tempCanvas.getContext('2d');
-
-  if (tempCtx) {
-    tempCtx.filter = `blur(${radius}px)`;
-    tempCtx.drawImage(canvas, 0, 0);
-
-    // Draw back to original
-    ctx.clearRect(0, 0, width, height);
-    ctx.drawImage(tempCanvas, 0, 0);
-  }
 }
 
 /**
@@ -407,10 +360,10 @@ export function createInvertedFaceMask(
   height: number,
   face: FaceDetectionResult,
   foreheadRatio = 0.3,
-  expand = 1.2
+  strokeWidth = 20
 ): HTMLCanvasElement {
   // First create normal face mask with smooth edges
-  const faceMask = createFaceMask(width, height, face, foreheadRatio, expand);
+  const faceMask = createFaceMask(width, height, face, foreheadRatio, strokeWidth);
 
   // Create inverted mask
   const canvas = document.createElement('canvas');
