@@ -73,8 +73,8 @@ export const UpscaleModal: React.FC<UpscaleModalProps> = ({
           <label className="input-label">Upscale Mode</label>
           <div className="space-y-2">
             {[
-              { value: 'composite', title: 'Full Composite', desc: 'Upscale the final merged image' },
-              { value: 'layer', title: 'Selected Layer Only', desc: 'Upscale only the current layer' },
+              { value: 'composite', title: 'Ảnh hoàn chỉnh', desc: 'Upscale mặt base + body overlay (ảnh đã ghép)' },
+              { value: 'layer', title: 'Chỉ Overlay', desc: 'Upscale overlay đã áp mask (vùng mặt trong suốt)' },
             ].map((opt) => (
               <button
                 key={opt.value}

@@ -31,6 +31,7 @@ import {
   drawBrushStroke,
   interpolatePoints,
   canvasToBase64,
+  applyMaskToLayer,
 } from './utils/canvas';
 import {
   loadFaceModels,
@@ -562,13 +563,15 @@ const App: React.FC = () => {
       let imageToUpscale: string;
 
       if (options.mode === 'layer') {
-        // Upscale selected layer only
+        // Upscale selected layer only (with mask applied - face area removed)
         const selectedLayer = layers.find(l => l.id === selectedLayerId);
         if (!selectedLayer?.image) {
           showToast({ type: 'warning', message: 'No layer selected' });
           return;
         }
-        imageToUpscale = canvasToBase64(selectedLayer.image);
+        // Apply mask to layer (face area becomes transparent)
+        const maskedLayer = applyMaskToLayer(selectedLayer.image, selectedLayer.mask);
+        imageToUpscale = canvasToBase64(maskedLayer);
       } else {
         // Upscale full composite
         if (layers.length === 0) {

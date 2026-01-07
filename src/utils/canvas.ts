@@ -293,6 +293,34 @@ export async function exportCanvasToBlob(
 }
 
 /**
+ * Apply mask to a layer image
+ * Returns a new canvas with the mask applied (masked areas become transparent)
+ */
+export function applyMaskToLayer(
+  image: HTMLCanvasElement,
+  mask: HTMLCanvasElement | null
+): HTMLCanvasElement {
+  const output = document.createElement('canvas');
+  output.width = image.width;
+  output.height = image.height;
+
+  const ctx = output.getContext('2d');
+  if (!ctx) return output;
+
+  // Draw original image
+  ctx.drawImage(image, 0, 0);
+
+  // Apply mask if exists
+  if (mask) {
+    ctx.globalCompositeOperation = 'destination-in';
+    ctx.drawImage(mask, 0, 0);
+    ctx.globalCompositeOperation = 'source-over';
+  }
+
+  return output;
+}
+
+/**
  * Canvas to base64
  */
 export function canvasToBase64(canvas: HTMLCanvasElement, type = 'image/png'): string {
