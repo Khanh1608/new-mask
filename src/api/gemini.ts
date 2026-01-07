@@ -17,7 +17,7 @@ let config: GeminiConfig | null = null;
 /**
  * Initialize Gemini API
  */
-export function initGemini(apiKey: string, model = 'gemini-2.0-flash-exp'): void {
+export function initGemini(apiKey: string, model = 'gemini-3-flash'): void {
   config = { apiKey, model };
 }
 
