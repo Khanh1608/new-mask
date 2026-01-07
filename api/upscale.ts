@@ -7,7 +7,7 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 
 // Model Alias endpoint - luôn dùng version mới nhất, tránh lỗi 422
-const CRYSTAL_UPSCALER_URL = 'https://api.replicate.com/v1/models/philz1337x/clarity-upscaler/predictions';
+const CRYSTAL_UPSCALER_URL = 'https://api.replicate.com/v1/models/philz1337x/crystal-upscaler/predictions';
 const REPLICATE_API_URL = 'https://api.replicate.com/v1/predictions';
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
