@@ -187,6 +187,16 @@ export const CloudSettingsModal: React.FC<CloudSettingsModalProps> = ({ isOpen, 
                 <label className="flex items-center gap-3 cursor-pointer">
                   <input
                     type="checkbox"
+                    checked={autoUpload.uploadOverlay}
+                    onChange={(e) => handleAutoUploadChange('uploadOverlay', e.target.checked)}
+                    className="w-4 h-4 rounded border-dark-500 bg-dark-700 text-primary-500 focus:ring-primary-500"
+                  />
+                  <span className="text-sm text-gray-400">Upload overlay layers when added</span>
+                </label>
+
+                <label className="flex items-center gap-3 cursor-pointer">
+                  <input
+                    type="checkbox"
                     checked={autoUpload.uploadUpscale}
                     onChange={(e) => handleAutoUploadChange('uploadUpscale', e.target.checked)}
                     className="w-4 h-4 rounded border-dark-500 bg-dark-700 text-primary-500 focus:ring-primary-500"

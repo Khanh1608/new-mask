@@ -377,7 +377,22 @@ const App: React.FC = () => {
 
       setLayers((prev) => [...prev, newLayer]);
       setSelectedLayerId(newLayer.id);
-      showToast({ type: 'success', message: 'Layer added' });
+
+      // Auto upload overlay to Dropbox if enabled
+      const autoUploadSettings = getAutoUploadSettings();
+      if (autoUploadSettings.enabled && autoUploadSettings.uploadOverlay && isDropboxConnected()) {
+        setProcessingMessage('Uploading to Dropbox...');
+        const imageData = canvasToBase64(image);
+        const filename = `overlay-${Date.now()}.png`;
+        const uploadResult = await uploadToDropbox(imageData, filename, autoUploadSettings.folder);
+        if (uploadResult.success) {
+          showToast({ type: 'success', message: `Layer added & uploaded to ${uploadResult.path}` });
+        } else {
+          showToast({ type: 'success', message: 'Layer added (Dropbox upload failed)' });
+        }
+      } else {
+        showToast({ type: 'success', message: 'Layer added' });
+      }
     } catch {
       showToast({ type: 'error', message: 'Failed to add layer' });
     } finally {

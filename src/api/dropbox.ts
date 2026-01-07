@@ -244,6 +244,7 @@ export async function uploadToDropbox(
 export function getAutoUploadSettings(): {
   enabled: boolean;
   uploadBase: boolean;
+  uploadOverlay: boolean;
   uploadUpscale: boolean;
   uploadExport: boolean;
   folder: string;
@@ -251,16 +252,22 @@ export function getAutoUploadSettings(): {
   const stored = localStorage.getItem('dropbox_auto_upload');
   if (stored) {
     try {
-      return JSON.parse(stored);
+      const parsed = JSON.parse(stored);
+      // Ensure uploadOverlay exists for backward compatibility
+      return {
+        ...parsed,
+        uploadOverlay: parsed.uploadOverlay ?? true,
+      };
     } catch {
       // Fall through to default
     }
   }
   return {
     enabled: false,
-    uploadBase: false,
+    uploadBase: true,
+    uploadOverlay: true,
     uploadUpscale: true,
-    uploadExport: true,
+    uploadExport: false,
     folder: '/LayerMask Pro',
   };
 }
@@ -271,6 +278,7 @@ export function getAutoUploadSettings(): {
 export function setAutoUploadSettings(settings: {
   enabled: boolean;
   uploadBase: boolean;
+  uploadOverlay: boolean;
   uploadUpscale: boolean;
   uploadExport: boolean;
   folder: string;
