@@ -1,13 +1,14 @@
 /**
  * Vercel Serverless Function for AI Upscale
+ * Uses Crystal Upscaler via Model Alias endpoint (always latest version)
  * Keeps REPLICATE_API_TOKEN secure on server-side
  */
 
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 
+// Model Alias endpoint - luôn dùng version mới nhất, tránh lỗi 422
+const CRYSTAL_UPSCALER_URL = 'https://api.replicate.com/v1/models/philz1337x/clarity-upscaler/predictions';
 const REPLICATE_API_URL = 'https://api.replicate.com/v1/predictions';
-// Crystal Upscaler (Clarity Upscaler) by philz1337x
-const CRYSTAL_UPSCALER_VERSION = 'dfad41707589d68ecdccd1dfa600d55a208f9310748e44bfe35b4a6291453d5e';
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   // CORS headers
@@ -27,11 +28,12 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
   const apiKey = process.env.REPLICATE_API_TOKEN;
   if (!apiKey) {
-    return res.status(500).json({ success: false, error: 'REPLICATE_API_TOKEN not configured. Please add it to Vercel Environment Variables.' });
+    console.error('Missing REPLICATE_API_TOKEN');
+    return res.status(500).json({ success: false, error: 'REPLICATE_API_TOKEN not configured.' });
   }
 
   try {
-    const { image, scale, enhanceFace, creativity = 0 } = req.body || {};
+    const { image, scale, enhanceFace } = req.body || {};
 
     // Validate body exists
     if (!req.body) {
@@ -48,38 +50,45 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       return res.status(413).json({ success: false, error: 'Image too large. Max 10MB.' });
     }
 
-    // Convert creativity from 0-100 to 0-1
-    const creativityValue = Math.max(0, Math.min(1, creativity / 100));
-    // Resemblance: 1.0 = giữ nguyên gốc nhất, khi enhanceFace = true thì set cao nhất
-    const resemblanceValue = enhanceFace ? 1.0 : 0.8;
+    // Đảm bảo scale là số nguyên và nằm trong giới hạn cho phép
+    const safeScale = Math.min(Math.max(Number(scale) || 4, 1), 10);
 
-    // Start prediction - only essential parameters
-    const createResponse = await fetch(REPLICATE_API_URL, {
+    console.log(`Sending request to Clarity Upscaler (Scale: ${safeScale}, Face Enhance: ${enhanceFace})...`);
+
+    // Start prediction - dùng Model Alias endpoint
+    const createResponse = await fetch(CRYSTAL_UPSCALER_URL, {
       method: 'POST',
       headers: {
-        'Authorization': `Bearer ${apiKey}`,
+        'Authorization': `Token ${apiKey}`,
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        version: CRYSTAL_UPSCALER_VERSION,
         input: {
           image: image,
-          scale_factor: scale,
-          resemblance: resemblanceValue,
-          creativity: creativityValue,
+          scale_factor: safeScale,
+          face_enhance: enhanceFace ?? true,
         },
       }),
     });
 
-    if (!createResponse.ok) {
-      const error = await createResponse.json().catch(() => ({}));
+    const responseText = await createResponse.text();
+
+    if (createResponse.status !== 201) {
+      console.error('Replicate Error:', responseText);
+      let errorMessage = responseText;
+      try {
+        const errorJson = JSON.parse(responseText);
+        errorMessage = errorJson.detail || errorJson.error || responseText;
+      } catch {
+        // Keep original text
+      }
       return res.status(createResponse.status).json({
         success: false,
-        error: error.detail || `Replicate API error: ${createResponse.status}`
+        error: `Replicate API Error: ${errorMessage}`
       });
     }
 
-    const prediction = await createResponse.json();
+    const prediction = JSON.parse(responseText);
 
     // Poll for result
     const maxAttempts = 120;
@@ -87,7 +96,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
     for (let attempt = 0; attempt < maxAttempts; attempt++) {
       const statusResponse = await fetch(`${REPLICATE_API_URL}/${prediction.id}`, {
-        headers: { 'Authorization': `Bearer ${apiKey}` },
+        headers: { 'Authorization': `Token ${apiKey}` },
       });
 
       if (!statusResponse.ok) {
@@ -105,6 +114,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       }
 
       if (status.status === 'failed') {
+        console.error('Prediction failed:', status.error);
         return res.status(500).json({ success: false, error: status.error || 'Processing failed' });
       }
 
