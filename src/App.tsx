@@ -537,30 +537,38 @@ const App: React.FC = () => {
       const rect = canvasRef.current?.getBoundingClientRect();
       if (!rect) return;
 
-      // Calculate zoom
+      // Calculate scale delta
       const scaleDelta = distance / lastPinchDistance;
-      const newScale = Math.min(Math.max(viewTransform.scale * scaleDelta, 0.1), 10);
 
-      // Zoom towards pinch center
-      const centerX = center.x - rect.left;
-      const centerY = center.y - rect.top;
-      const newX = centerX - ((centerX - viewTransform.x) / viewTransform.scale) * newScale;
-      const newY = centerY - ((centerY - viewTransform.y) / viewTransform.scale) * newScale;
+      // If a layer is selected and in TRANSFORM mode, resize the layer
+      if (selectedLayer && activeTool === 'TRANSFORM' && selectedLayer.type !== 'BASE') {
+        const newScale = Math.min(Math.max(selectedLayer.scale * scaleDelta, 0.1), 10);
+        updateLayer(selectedLayer.id, { scale: newScale });
+      } else {
+        // Otherwise, zoom the canvas
+        const newScale = Math.min(Math.max(viewTransform.scale * scaleDelta, 0.1), 10);
 
-      // Also pan based on center movement
-      const panDx = center.x - lastPinchCenter.x;
-      const panDy = center.y - lastPinchCenter.y;
+        // Zoom towards pinch center
+        const centerX = center.x - rect.left;
+        const centerY = center.y - rect.top;
+        const newX = centerX - ((centerX - viewTransform.x) / viewTransform.scale) * newScale;
+        const newY = centerY - ((centerY - viewTransform.y) / viewTransform.scale) * newScale;
 
-      setViewTransform({
-        x: newX + panDx,
-        y: newY + panDy,
-        scale: newScale,
-      });
+        // Also pan based on center movement
+        const panDx = center.x - lastPinchCenter.x;
+        const panDy = center.y - lastPinchCenter.y;
+
+        setViewTransform({
+          x: newX + panDx,
+          y: newY + panDy,
+          scale: newScale,
+        });
+      }
 
       setLastPinchDistance(distance);
       setLastPinchCenter(center);
     }
-  }, [isPinching, lastPinchDistance, lastPinchCenter, viewTransform]);
+  }, [isPinching, lastPinchDistance, lastPinchCenter, viewTransform, selectedLayer, activeTool, updateLayer]);
 
   const handleTouchEnd = useCallback((e: React.TouchEvent) => {
     if (e.touches.length < 2) {
