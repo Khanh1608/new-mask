@@ -116,47 +116,54 @@ Describe how to replace them with: ${request.clothingDescription || 'a modern st
     const analysisData = await analysisResponse.json();
     const analysis = analysisData.choices?.[0]?.message?.content || '';
 
-    // Step 2: Generate image with DALL-E 3
+    // Step 2: Generate/Edit image
+    // Use images/edits endpoint to preserve the original image and face
     let generationPrompt = '';
 
     if (request.mode === 'VIRTUAL_TRYON') {
-      generationPrompt = `Create a photorealistic image of a person wearing specific clothing.
+      generationPrompt = `Based on the analysis: ${analysis}
 
-Based on analysis: ${analysis}
-
+Edit this image to change ONLY the clothing while keeping the person's face, body, pose, and background EXACTLY the same.
 Requirements:
-- Photorealistic quality
-- Natural fabric draping and lighting
-- Maintain exact pose and proportions from reference
-- ${request.preserveFace ? 'Preserve facial features exactly' : 'Realistic face'}
-- Professional fashion photography style
-- ${request.enhanceQuality ? 'High detail, 4K quality' : 'Standard quality'}`;
+- Keep the EXACT same face - do not change facial features at all
+- Keep the same pose and body position
+- Keep the same background
+- Only replace/modify the clothing
+- Natural fabric draping and lighting that matches the original
+- Photorealistic quality`;
     } else {
-      generationPrompt = `Create a photorealistic fashion image:
+      generationPrompt = `Based on the analysis: ${analysis}
 
-${analysis}
-
+Edit this image to dress the person in: ${request.clothingDescription || 'modern stylish clothing'}
 Requirements:
-- Outfit: ${request.clothingDescription || 'modern stylish clothing'}
-- Photorealistic quality
+- Keep the EXACT same face - do not change facial features at all
+- Keep the same pose and body position
+- Keep the same background
+- Only change the outfit/clothing
 - Natural lighting and fabric textures
-- Professional fashion photography
-- ${request.enhanceQuality ? 'Ultra high detail' : 'Standard detail'}`;
+- Photorealistic quality`;
     }
 
-    const imageResponse = await fetch(`${OPENAI_API_URL}/images/generations`, {
+    // Try using images/edits endpoint first (preserves original image)
+    const formData = new FormData();
+
+    // Convert base64 to blob for the image
+    const imageBase64 = request.personImage.startsWith('data:')
+      ? request.personImage.split(',')[1]
+      : request.personImage;
+    const imageBlob = await fetch(`data:image/png;base64,${imageBase64}`).then(r => r.blob());
+    formData.append('image', imageBlob, 'image.png');
+    formData.append('prompt', generationPrompt);
+    formData.append('model', 'gpt-image-1');
+    formData.append('size', '1024x1024');
+    formData.append('quality', request.enhanceQuality ? 'high' : 'auto');
+
+    const imageResponse = await fetch(`${OPENAI_API_URL}/images/edits`, {
       method: 'POST',
       headers: {
-        'Content-Type': 'application/json',
         Authorization: `Bearer ${config.apiKey}`,
       },
-      body: JSON.stringify({
-        model: 'gpt-image-1.5',
-        prompt: generationPrompt,
-        n: 1,
-        size: '1024x1024',
-        quality: request.enhanceQuality ? 'high' : 'auto',
-      }),
+      body: formData,
     });
 
     if (!imageResponse.ok) {
