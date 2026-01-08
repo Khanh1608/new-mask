@@ -96,6 +96,8 @@ const App: React.FC = () => {
   const [isPinching, setIsPinching] = useState(false);
   const [lastPinchDistance, setLastPinchDistance] = useState(0);
   const [lastPinchCenter, setLastPinchCenter] = useState({ x: 0, y: 0 });
+  const pinchAnimationRef = useRef<number | null>(null);
+  const pendingPinchScale = useRef<number | null>(null);
 
   // State - Modals
   const [showTryOnModal, setShowTryOnModal] = useState(false);
@@ -542,8 +544,18 @@ const App: React.FC = () => {
 
       // If a layer is selected and in TRANSFORM mode, resize the layer
       if (selectedLayer && activeTool === 'TRANSFORM' && selectedLayer.type !== 'BASE') {
+        // Use requestAnimationFrame to throttle updates and reduce lag
         const newScale = Math.min(Math.max(selectedLayer.scale * scaleDelta, 0.1), 10);
-        updateLayer(selectedLayer.id, { scale: newScale });
+        pendingPinchScale.current = newScale;
+
+        if (!pinchAnimationRef.current) {
+          pinchAnimationRef.current = requestAnimationFrame(() => {
+            if (pendingPinchScale.current !== null && selectedLayer) {
+              updateLayer(selectedLayer.id, { scale: pendingPinchScale.current });
+            }
+            pinchAnimationRef.current = null;
+          });
+        }
       } else {
         // Otherwise, zoom the canvas
         const newScale = Math.min(Math.max(viewTransform.scale * scaleDelta, 0.1), 10);
