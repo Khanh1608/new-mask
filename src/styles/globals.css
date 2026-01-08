@@ -296,6 +296,34 @@
   animation: slide-up 0.25s ease-out;
 }
 
+/* AI Loading Animations - ChatGPT/Grok style */
+@keyframes shimmer {
+  0% {
+    background-position: -200% 0;
+  }
+  100% {
+    background-position: 200% 0;
+  }
+}
+
+@keyframes scan-line {
+  0% {
+    top: -10%;
+  }
+  100% {
+    top: 110%;
+  }
+}
+
+.animate-shimmer {
+  background-size: 200% 100%;
+  animation: shimmer 2s infinite linear;
+}
+
+.animate-scan-line {
+  animation: scan-line 2s infinite ease-in-out;
+}
+
 /* Mobile touch improvements */
 @media (max-width: 1024px) {
   /* Larger touch targets */
